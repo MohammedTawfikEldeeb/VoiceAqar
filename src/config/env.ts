@@ -12,6 +12,8 @@ const envSchema = z.object({
   NEO4J_USER: z.string().default('neo4j'),
   NEO4J_PASSWORD: z.string(),
   GEMINI_API_KEY: z.string(),
+  EMBEDDING_PROVIDER: z.enum(['local', 'gemini']).default('local'),
+  VECTOR_DB_PROVIDER: z.enum(['qdrant']).default('qdrant'),
 });
 
 export const env = envSchema.parse(process.env);
