@@ -17,6 +17,27 @@ export const properties = pgTable('properties', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
-// Infer TypeScript types directly from the schema
 export type Property = typeof properties.$inferSelect;
 export type NewProperty = typeof properties.$inferInsert;
+
+export const users = pgTable('users', {
+  userId: varchar('user_id', { length: 50 }).primaryKey(),
+  phoneNumber: varchar('phone_number', { length: 50 }).unique().notNull(),
+  name: varchar('name', { length: 255 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export type User = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;
+
+export const callLogs = pgTable('call_logs', {
+  callId: varchar('call_id', { length: 50 }).primaryKey(),
+  userId: varchar('user_id', { length: 50 }).references(() => users.userId),
+  startedAt: timestamp('started_at').defaultNow().notNull(),
+  endedAt: timestamp('ended_at'),
+  status: varchar('status', { length: 20 }).default('initiated').notNull(),
+  summary: text('summary'),
+});
+
+export type CallLog = typeof callLogs.$inferSelect;
+export type NewCallLog = typeof callLogs.$inferInsert;

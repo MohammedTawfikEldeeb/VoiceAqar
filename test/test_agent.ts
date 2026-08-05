@@ -74,7 +74,21 @@ async function testLangGraphAgent() {
     assert.ok(reply2.includes('4500000') || reply2.includes('٤٥٠٠٠٠٠') || reply2.includes('مليون') || reply2.includes('غرف') || reply2.includes('3'), 'Agent should remember the property from the checkpoint history and return price/rooms');
     console.log('✅ Turn 2 (Checkpoint Persistence) passed successfully!');
 
-    // 5. Cleanup
+    // 5. Onboarding Turn: Introduce a new user and verify they are saved
+    console.log('\n💬 Turn 3: Introducing a new user to test onboarding and profile registration...');
+    const testPhone = `011${Math.floor(10000000 + Math.random() * 90000000)}`;
+    const response3 = await agent.invoke({
+      messages: [{ role: 'user', content: `أهلاً يا فندم، أنا اسمي أستاذ يوسف ورقم تليفوني هو ${testPhone}` }]
+    }, config);
+
+    const reply3 = response3.messages[response3.messages.length - 1].content;
+    console.log('\nAgent Reply 3:\n', reply3);
+
+    assert.ok(reply3, 'Agent reply 3 should not be empty');
+    assert.ok(reply3.includes('يوسف') || reply3.includes('يوسف يا فندم') || reply3.includes('سجلت'), 'Agent should greet the user by name after saving the profile');
+    console.log('✅ Turn 3 (Onboarding & Registration) passed successfully!');
+
+    // 6. Cleanup
     console.log('\n🧹 Cleaning up: Deleting "properties" test collection...');
     await vectorDbService.deleteCollection(collectionName);
     console.log('✅ Clean up finished successfully!');
