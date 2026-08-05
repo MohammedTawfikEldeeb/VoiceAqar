@@ -15,7 +15,8 @@
     "test:qdrant": "tsx test/test_qdrant_service.ts",
     "test:embeddings": "tsx test/test_embedding_service.ts",
     "test:tools": "tsx test/test_property_retrieval_tool.ts",
-    "test": "npm run test:connections && npm run test:qdrant && npm run test:embeddings && npm run test:tools"
+    "test:speech": "tsx test/test_speech_services.ts",
+    "test": "npm run test:connections && npm run test:qdrant && npm run test:embeddings && npm run test:tools && npm run test:speech"
   },
   "repository": {
     "type": "git",
