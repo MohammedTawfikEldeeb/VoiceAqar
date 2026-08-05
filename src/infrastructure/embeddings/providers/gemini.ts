@@ -2,10 +2,7 @@ import { GoogleGenAI } from '@google/genai';
 import { env } from '../../../config/env.js';
 import type { IEmbeddingService } from '../interface.js';
 
-/**
- * Gemini embedding service using Google Gen AI API.
- * Future-proof option for cloud-scale or high-accuracy embeddings.
- */
+
 export class GeminiEmbeddingService implements IEmbeddingService {
   private ai: GoogleGenAI;
   private modelName: string;
@@ -14,7 +11,6 @@ export class GeminiEmbeddingService implements IEmbeddingService {
   constructor(apiKey: string = env.GEMINI_API_KEY, modelName: string = 'text-embedding-004') {
     this.ai = new GoogleGenAI({ apiKey });
     this.modelName = modelName;
-    // text-embedding-004 defaults to 768 dimensions
     this.dimension = 768;
   }
 
@@ -28,7 +24,6 @@ export class GeminiEmbeddingService implements IEmbeddingService {
       contents: text,
     });
     
-    // In @google/genai, single content request returns response.embeddings containing one element
     const embedding = response.embeddings?.[0] || (response as any).embedding;
     if (!embedding?.values) {
       throw new Error('Failed to generate embedding from Gemini API');
