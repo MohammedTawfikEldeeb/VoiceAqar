@@ -19,6 +19,7 @@
     "test:llm": "tsx test/test_llm_service.ts",
     "test:memory": "tsx test/test_memory_services.ts",
     "test:agent": "tsx test/test_agent.ts",
+    "chat": "tsx test/chat_with_agent.ts",
     "test": "npm run test:connections && npm run test:qdrant && npm run test:embeddings && npm run test:tools && npm run test:speech && npm run test:llm && npm run test:memory && npm run test:agent"
   },
   "repository": {
@@ -50,9 +51,12 @@
     "ioredis": "^6.0.0",
     "neo4j-driver": "^6.2.0",
     "nodemon": "^3.1.14",
+    "opik": "^1.11.14",
+    "opik-langchain": "^2.2.20",
     "pg": "^8.22.0",
     "ws": "^8.21.1",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "zod-to-json-schema": "^3.25.2"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

@@ -6,7 +6,7 @@ export class GeminiTtsService implements ITtsService {
   private ai: GoogleGenAI;
   private modelName: string;
 
-  constructor(apiKey: string = env.GEMINI_API_KEY, modelName: string = 'gemini-2.0-flash') {
+  constructor(apiKey: string = env.GEMINI_API_KEY, modelName: string = 'gemini-2.5-flash-preview-tts') {
     this.ai = new GoogleGenAI({ apiKey });
     this.modelName = modelName;
   }

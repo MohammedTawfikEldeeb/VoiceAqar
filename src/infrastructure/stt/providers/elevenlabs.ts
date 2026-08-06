@@ -48,8 +48,8 @@ export class ElevenLabsSttService implements ISttService {
       throw new Error(`ElevenLabs Speech-To-Text request failed (Status ${response.status}): ${errorText}`);
     }
 
-    const data = await response.json() as { text: string };
-    if (data.text) {
+    const data = await response.json() as { text?: string };
+    if (data.text !== undefined) {
       return data.text.trim();
     }
 

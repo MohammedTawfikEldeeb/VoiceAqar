@@ -7,7 +7,7 @@ export class GroqLlmService implements ILlmService {
   private client: Groq;
   private modelName: string;
 
-  constructor(apiKey: string = env.GROQ_API_KEY || '', modelName: string = 'llama-3.3-70b-versatile') {
+  constructor(apiKey: string = env.GROQ_API_KEY || '', modelName: string = 'openai/gpt-oss-20b') {
     this.client = new Groq({ apiKey });
     this.modelName = modelName;
   }

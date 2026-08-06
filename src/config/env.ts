@@ -18,8 +18,11 @@ const envSchema = z.object({
   EMBEDDING_PROVIDER: z.enum(['local', 'gemini']).default('local'),
   VECTOR_DB_PROVIDER: z.enum(['qdrant']).default('qdrant'),
   TTS_PROVIDER: z.enum(['gemini', 'elevenlabs']).default('gemini'),
-  STT_PROVIDER: z.enum(['gemini', 'elevenlabs']).default('gemini'),
+  STT_PROVIDER: z.enum(['gemini', 'elevenlabs', 'openrouter']).default('gemini'),
   LLM_PROVIDER: z.enum(['gemini', 'openrouter', 'groq']).default('gemini'),
+  OPIK_API_KEY: z.string().optional(),
+  OPIK_WORKSPACE: z.string().optional(),
+  OPIK_PROJECT_NAME: z.string().default('voiceaqar'),
 });
 
 export const env = envSchema.parse(process.env);
