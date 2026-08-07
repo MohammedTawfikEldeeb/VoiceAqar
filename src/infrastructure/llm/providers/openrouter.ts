@@ -9,7 +9,7 @@ export class OpenRouterLlmService implements ILlmService {
 
   constructor(
     apiKey: string = env.OPENROUTER_API_KEY || '',
-    modelName: string = 'google/gemini-2.5-flash',
+    modelName: string = 'openai/gpt-oss-20b',
     baseUrl: string = 'https://openrouter.ai/api/v1'
   ) {
     this.apiKey = apiKey;

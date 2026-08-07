@@ -10,6 +10,7 @@ import { getAgentCallbacks } from '../utils/callbacks.js';
 import { getSystemPrompt, syncPromptWithOpik } from './prompt.js';
 import { SystemMessage } from '@langchain/core/messages';
 
+// Re-export callback helper for backwards compatibility with gateways
 export { getAgentCallbacks };
 
 // 1. Initialize the Custom ChatModel
@@ -42,6 +43,7 @@ export async function initializeAgent() {
   isInitialized = true;
 }
 
+// 3. Compile the React Agent with all tools and checkpointer
 const model = getChatModel();
 const tools = [propertyRetrievalTool, saveUserProfileTool];
 
@@ -49,6 +51,7 @@ export const agent = createReactAgent({
   llm: model,
   tools,
   checkpointSaver: checkpointer,
+  // Evaluate the active system prompt dynamically on every run
   messageModifier: (messages: any[]) => [
     new SystemMessage(getSystemPrompt()),
     ...messages

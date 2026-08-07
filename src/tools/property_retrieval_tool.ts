@@ -4,9 +4,42 @@ import { embeddingService } from '../infrastructure/embeddings/index.js';
 import { vectorDbService } from '../infrastructure/vectordb/index.js';
 
 export const propertyRetrievalTool = tool(
-  async ({ query, filter, limit = 5 }) => {
-
+  async ({ query, bedrooms, bathrooms, minPrice, maxPrice, minArea, maxArea, furnished, limit = 5 }) => {
+    
     const queryVector = await embeddingService.generateEmbedding(query, true);
+
+    // Build structured filter for numeric and boolean criteria only
+    const mustConditions: any[] = [];
+    
+    if (bedrooms !== undefined && bedrooms !== null) {
+      mustConditions.push({ key: 'bedrooms', match: { value: bedrooms } });
+    }
+    if (bathrooms !== undefined && bathrooms !== null) {
+      mustConditions.push({ key: 'bathrooms', match: { value: bathrooms } });
+    }
+    if (furnished !== undefined && furnished !== null) {
+      mustConditions.push({ key: 'furnished', match: { value: furnished } });
+    }
+
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      const range: any = {};
+      if (minPrice !== undefined && minPrice !== null) range.gte = minPrice;
+      if (maxPrice !== undefined && maxPrice !== null) range.lte = maxPrice;
+      if (Object.keys(range).length > 0) {
+        mustConditions.push({ key: 'price', range });
+      }
+    }
+
+    if (minArea !== undefined || maxArea !== undefined) {
+      const range: any = {};
+      if (minArea !== undefined && minArea !== null) range.gte = minArea;
+      if (maxArea !== undefined && maxArea !== null) range.lte = maxArea;
+      if (Object.keys(range).length > 0) {
+        mustConditions.push({ key: 'areaSqm', range });
+      }
+    }
+
+    const filter = mustConditions.length > 0 ? { must: mustConditions } : undefined;
 
     const hits = await vectorDbService.search('properties', {
       vector: queryVector,
@@ -42,13 +75,17 @@ Furnished: ${p.furnished ? 'Yes' : 'No'}
   },
   {
     name: 'property_retrieval',
-    description: 'Useful for searching/retrieving real estate properties matching a natural language description (e.g., location, type, size, price range). Input query should be in Arabic or English.',
+    description: 'Search properties using a natural language query for descriptions/locations, and optional exact filters for numeric properties (bedrooms, bathrooms, price range, area range, furnished).',
     schema: z.object({
-      query: z.string().describe('The search query in Arabic or English describing desired properties.'),
-      filter: z.any().optional().describe(
-        'Optional structured filter object. Example for filtering by city: { "must": [{ "key": "cityAr", "match": { "value": "الشيخ زايد" } }] }'
-      ),
-      limit: z.number().optional().default(5).describe('Maximum number of properties to retrieve (default: 5).'),
+      query: z.string().describe('The search query in Arabic or English describing the desired location, property type, or compound (e.g. فيلا في مفيدا الشيخ زايد).'),
+      bedrooms: z.number().optional().describe('Exact number of bedrooms desired.'),
+      bathrooms: z.number().optional().describe('Exact number of bathrooms desired.'),
+      minPrice: z.number().optional().describe('Minimum price in EGP.'),
+      maxPrice: z.number().optional().describe('Maximum price in EGP.'),
+      minArea: z.number().optional().describe('Minimum area in square meters.'),
+      maxArea: z.number().optional().describe('Maximum area in square meters.'),
+      furnished: z.boolean().optional().describe('Whether the property must be furnished.'),
+      limit: z.number().optional().default(5).describe('Maximum number of properties to retrieve.'),
     }),
   }
 );

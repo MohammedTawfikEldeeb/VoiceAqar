@@ -4,6 +4,7 @@ import type { ChatResult } from '@langchain/core/outputs';
 import { env } from '../../config/env.js';
 import { llmService } from './index.js';
 import { formatLangChainMessagesToOpenAI } from '../../utils/message_formatter.js';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 
 export class CustomChatModel extends BaseChatModel {
   private _boundTools: any[] = [];
@@ -113,12 +114,12 @@ export class CustomChatModel extends BaseChatModel {
       let parameters: any = { type: 'object', properties: {} };
       if (tool.schema) {
         try {
-          const { zodToJsonSchema } = require('zod-to-json-schema');
           const jsonSchema = zodToJsonSchema(tool.schema);
           // Remove $schema key as OpenAI doesn't accept it
-          delete jsonSchema.$schema;
+          delete (jsonSchema as any).$schema;
           parameters = jsonSchema;
-        } catch {
+        } catch (e) {
+          console.error(`⚠️ Failed to convert Zod schema for tool ${tool.name}:`, e);
           parameters = { type: 'object', properties: {} };
         }
       }
