@@ -32,7 +32,6 @@ app.post('/api/chat', async (req, res) => {
     let activeUserId = '';
     let userName = 'anonymous';
 
-    // 1. Resolve user profile based on phone number
     const foundUsers = await db.select().from(users).where(eq(users.phoneNumber, activePhone)).limit(1);
     if (foundUsers.length > 0) {
       activeUserId = foundUsers[0].userId;

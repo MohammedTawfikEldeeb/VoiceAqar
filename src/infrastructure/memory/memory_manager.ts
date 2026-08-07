@@ -7,14 +7,7 @@ import type { IRelationalMemoryService } from './relational/interface.js';
 import type { IGraphMemoryService } from './graph/interface.js';
 import type { IContextWindowService } from './context/interface.js';
 
-/**
- * MemoryManager orchestrates all 5 memory layers:
- * 1. Working Memory (Redis) — transient session state
- * 2. Relational Memory (PostgreSQL) — structured property data
- * 3. Semantic Memory (Qdrant) — vector similarity search
- * 4. Graph Memory (Neo4j) — user preferences & relationships
- * 5. Context Window (In-Memory) — Gemini Live API context assembly
- */
+
 export class MemoryManager {
   public working: IWorkingMemoryService;
   public relational: IRelationalMemoryService;
@@ -46,7 +39,7 @@ export class MemoryManager {
     await this.graph.initialize();
 
     this.isInitialized = true;
-    console.log('✅ MemoryManager initialized (Neo4j constraints created)');
+    console.log('MemoryManager initialized (Neo4j constraints created)');
   }
 
   /**
@@ -68,7 +61,7 @@ export class MemoryManager {
       this.context.injectMemorySummary(userContext);
     }
 
-    console.log(`📞 Call started: session=${sessionId}, user=${userId || 'anonymous'}`);
+    console.log(`Call started: session=${sessionId}, user=${userId || 'anonymous'}`);
   }
 
   /**
@@ -116,7 +109,7 @@ export class MemoryManager {
     // Reset the in-memory context window
     this.context.reset();
 
-    console.log(`📞 Call ended: session=${sessionId}, user=${userId || 'anonymous'}`);
+    console.log(` Call ended: session=${sessionId}, user=${userId || 'anonymous'}`);
   }
 
   /**

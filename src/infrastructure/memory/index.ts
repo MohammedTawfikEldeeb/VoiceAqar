@@ -1,6 +1,3 @@
-// =============================================================================
-// Memory Infrastructure — Barrel Exports
-// =============================================================================
 
 // Layer 1: Working & Session Memory (Redis)
 export { workingMemory, WorkingMemoryFactory } from './working/index.js';

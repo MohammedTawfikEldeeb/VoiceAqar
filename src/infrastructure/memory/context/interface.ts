@@ -12,7 +12,6 @@ export interface LiveApiContext {
 }
 
 export interface IContextWindowService {
-  buildSystemPrompt(userContext?: string): string;
   addToolResult(toolName: string, result: string): void;
   getToolResults(): ContextEntry[];
   injectMemorySummary(summary: string): void;
