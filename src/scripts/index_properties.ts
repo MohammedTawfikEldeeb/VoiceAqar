@@ -79,7 +79,7 @@ async function indexProperties(): Promise<void> {
 
   for (let i = 0; i < allProperties.length; i += EMBED_BATCH_SIZE) {
     const batch = allProperties.slice(i, i + EMBED_BATCH_SIZE);
-    const texts = batch.map(p => p.descriptionAr);
+    const texts = batch.map(p => `${p.titleAr}\n${p.descriptionAr}`);
 
     const vectors = await embeddingService.generateEmbeddings(texts, false);
 

@@ -1,48 +1,31 @@
 import { Opik } from 'opik';
 import { env } from '../config/env.js';
 
-export const DEFAULT_SYSTEM_PROMPT = `You are VoiceAqar, an expert Egyptian real estate AI voice assistant.
+export const DEFAULT_SYSTEM_PROMPT = `You are VoiceAqar, an Egyptian real estate voice assistant.
 
-## Your Personality
-- Speak in clear Egyptian Arabic dialect only.
-- Be warm, professional, and helpful like a trusted real estate advisor.
-- Use Egyptian expressions naturally like يا فندم، إن شاء الله، حاضر.
+## Personality
+Speak only in Egyptian Arabic dialect. Be warm, professional, like a trusted advisor. Use natural expressions (يا فندم، إن شاء الله، حاضر).
 
-## Response Format Rules (CRITICAL)
-- You are a VOICE assistant. Your responses will be spoken out loud by a TTS engine.
-- NEVER use emojis, symbols, or special characters.
-- NEVER use markdown formatting like bold (**), bullet points (-), headers (#), or lists.
-- NEVER use numbered lists or structured formatting.
-- Keep responses SHORT — 2 to 3 sentences maximum, like a natural phone conversation.
-- Write in plain text only, as if you are talking on the phone to a customer.
-- When presenting property results, mention them naturally in speech, not as a formatted list.
+## Voice Format (CRITICAL)
+Responses are spoken by TTS. Plain text only — no emojis, no markdown, no lists/bullets/headers/numbers. Max 2–3 sentences, like a real phone call. Mention properties conversationally, never as a list.
 
-## Your Tools
-1. property_retrieval — Search properties. Pass locations, property types, and compound names in the "query" parameter. Pass numbers (bedrooms, bathrooms, price range, area range, furnished) in their specific parameters.
-2. save_user_profile — Save user name/phone when they introduce themselves.
-
-## Search Instructions (CRITICAL)
-When the user asks about properties, you MUST:
-1. Put all descriptive and location details (e.g. city, district, compound, property type) into the "query" parameter (in Arabic).
-2. Put any specific numeric/boolean filters (bedrooms, bathrooms, minPrice, maxPrice, furnished) into their respective parameters.
+## Tools
+- property_retrieval: query = location/type/compound (Arabic text). Numeric/boolean filters (bedrooms, bathrooms, minPrice, maxPrice, furnished) go in their own parameters, never in query.
+- save_user_profile: save name/phone once the user shares them.
 
 Examples:
-- User: "عايز فيلا في مفيدا بحمامين"
-  Call: property_retrieval(query: "فيلا في مفيدا", bathrooms: 2)
+- "عايز فيلا في مفيدا بحمامين" → query: "فيلا في مفيدا", bathrooms: 2
+- "شقة في التجمع بـ 3 غرف اقل من 5 مليون" → query: "شقة في التجمع", bedrooms: 3, maxPrice: 5000000
+- "شقة مفروشة للايجار في الشيخ زايد" → query: "شقة للايجار في الشيخ زايد", furnished: true
 
-- User: "شقة في التجمع بـ 3 غرف اقل من 5 مليون"
-  Call: property_retrieval(query: "شقة في التجمع", bedrooms: 3, maxPrice: 5000000)
+## Accuracy Rules (CRITICAL)
+- Only show properties matching the requested compound/location exactly, per the retrieved data. If none match, say so and offer alternatives explicitly.
+- Never guess or misstate City/District/Compound — use the data as given (e.g. don't say Mivida is in Zayed if it's in New Cairo).
+- Match property type strictly (don't show apartments for a villa request); don't mix in unrelated compounds unless asked.
 
-- User: "شقة مفروشة للايجار في الشيخ زايد"
-  Call: property_retrieval(query: "شقة للايجار في الشيخ زايد", furnished: true)
-
-- User: "مكان هادي وقريب من مدارس"
-  Call: property_retrieval(query: "مكان هادي وقريب من مدارس")
-
-## General Instructions
-- Always use property_retrieval when the user asks about properties.
-- If no results found, suggest broadening the criteria in a short sentence.
-- If you do not know the user's name, ask for it politely and immediately save it using save_user_profile.`;
+## General
+- Always call property_retrieval for property questions.
+- Don't know the user's name → ask, then save it immediately.`;
 
 let activeSystemPrompt = DEFAULT_SYSTEM_PROMPT;
 
@@ -54,7 +37,9 @@ export function getSystemPrompt(): string {
 }
 
 /**
- * Attempts to fetch the latest prompt version from Opik Prompt Library, with local fallback.
+ * Attempts to fetch the latest prompt version from Opik Prompt Library.
+ * If the prompt does not exist in Opik, or if the local DEFAULT_SYSTEM_PROMPT differs
+ * from the latest dashboard version, it automatically uploads/versions it to track changes.
  */
 export async function syncPromptWithOpik(): Promise<void> {
   if (!env.OPIK_API_KEY) {
@@ -64,7 +49,7 @@ export async function syncPromptWithOpik(): Promise<void> {
   }
 
   try {
-    console.log('🔄 Attempting to fetch system prompt from Opik Prompt Library...');
+    console.log('🔄 Syncing system prompt with Opik Prompt Library...');
     
     // Set environment keys for the Opik Client instance
     process.env.OPIK_API_KEY = env.OPIK_API_KEY;
@@ -74,19 +59,41 @@ export async function syncPromptWithOpik(): Promise<void> {
     process.env.OPIK_PROJECT_NAME = env.OPIK_PROJECT_NAME;
 
     const opik = new Opik();
-    const promptObj = await opik.getPrompt({
-      name: 'voiceaqar-system-prompt',
-    });
+    
+    let existingPrompt: any = null;
+    try {
+      existingPrompt = await opik.getPrompt({
+        name: 'voiceaqar-system-prompt',
+      });
+    } catch (e) {
+      // Prompt doesn't exist yet, we will create it
+    }
 
-    if (promptObj && promptObj.template) {
-      activeSystemPrompt = promptObj.template;
-      console.log('✅ Successfully loaded and synced system prompt from Opik Prompt Library!');
-    } else {
-      console.log('⚠️ Opik returned empty prompt template. Falling back to local default.');
+    if (!existingPrompt) {
+      console.log('Prompt not found in Opik. Registering local default system prompt...');
+      const newPrompt = await opik.createPrompt({
+        name: 'voiceaqar-system-prompt',
+        prompt: DEFAULT_SYSTEM_PROMPT,
+      });
+      console.log(`Registered default prompt in Opik (Version: ${newPrompt.versionId})`);
       activeSystemPrompt = DEFAULT_SYSTEM_PROMPT;
+    } else {
+      // If local prompt differs from Opik prompt, push a new version to track changes
+      if (existingPrompt.template !== DEFAULT_SYSTEM_PROMPT) {
+        console.log('Local prompt has changed! Pushing new version to Opik Prompt Library...');
+        const updatedPrompt = await opik.createPrompt({
+          name: 'voiceaqar-system-prompt',
+          prompt: DEFAULT_SYSTEM_PROMPT,
+        });
+        console.log(`Successfully pushed new version to Opik (Version: ${updatedPrompt.versionId})`);
+        activeSystemPrompt = DEFAULT_SYSTEM_PROMPT;
+      } else {
+        console.log('Opik Prompt Library is in sync with local file.');
+        activeSystemPrompt = existingPrompt.template;
+      }
     }
   } catch (err: any) {
-    console.log(`⚠️ Opik Prompt sync failed: ${err.message || String(err)}. Using local default system prompt.`);
+    console.log(`Opik Prompt sync failed: ${err.message || String(err)}. Using local default system prompt.`);
     activeSystemPrompt = DEFAULT_SYSTEM_PROMPT;
   }
 }
