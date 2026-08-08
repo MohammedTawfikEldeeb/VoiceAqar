@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>صوت عقار — المحادثة الصوتية</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Outfit:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+      --glass-bg: rgba(15, 23, 42, 0.6);
+      --glass-border: 1px solid rgba(255, 255, 255, 0.08);
+      --primary: #6366f1;
+      --primary-glow: rgba(99, 102, 241, 0.4);
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --radius-container: 24px;
+      --radius-button: 12px;
+      --radius-bubble: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Cairo', 'Outfit', sans-serif;
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 600px;
+      height: 90vh;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: var(--glass-border);
+      border-radius: var(--radius-container);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Header */
+    .header {
+      padding: 1.5rem;
+      border-bottom: var(--glass-border);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .badge {
+      background: var(--primary);
+      padding: 0.25rem 0.75rem;
+      border-radius: 99px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      box-shadow: 0 0 10px var(--primary-glow);
+    }
+
+    .phone-input-group {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .phone-input-group input {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.2);
+      border: var(--glass-border);
+      color: var(--text-main);
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius-button);
+      font-family: 'Outfit', sans-serif;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .phone-input-group input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 10px var(--primary-glow);
+    }
+
+    .btn-reset {
+      background: rgba(255, 255, 255, 0.05);
+      border: var(--glass-border);
+      color: var(--text-main);
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius-button);
+      cursor: pointer;
+      font-family: 'Cairo', sans-serif;
+      transition: all 0.2s ease;
+    }
+
+    .btn-reset:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Mode Selector */
+    .mode-selector {
+      display: flex;
+      padding: 1rem 1.5rem 0;
+      gap: 0.5rem;
+    }
+
+    .mode-btn {
+      flex: 1;
+      padding: 0.75rem;
+      background: rgba(0, 0, 0, 0.2);
+      border: var(--glass-border);
+      color: var(--text-muted);
+      border-radius: var(--radius-button);
+      cursor: pointer;
+      font-family: 'Outfit', 'Cairo', sans-serif;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    .mode-btn.active {
+      background: var(--primary);
+      color: var(--text-main);
+      border-color: var(--primary);
+      box-shadow: 0 0 15px var(--primary-glow);
+    }
+
+    /* Status Bar */
+    .status-bar {
+      padding: 1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--danger);
+      transition: all 0.3s ease;
+    }
+
+    .status-dot.connected {
+      background: var(--success);
+      box-shadow: 0 0 10px var(--success);
+    }
+
+    .status-dot.connecting {
+      background: var(--warning);
+      animation: pulse 1s infinite;
+    }
+
+    .status-dot.listening {
+      background: #3b82f6; /* blue */
+      animation: pulse 1s infinite;
+    }
+
+    .status-dot.processing {
+      background: #a855f7; /* purple */
+      animation: pulse 1s infinite;
+    }
+
+    .status-dot.speaking {
+      background: var(--success);
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 10px currentColor; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+
+    /* Waveform */
+    .waveform-container {
+      padding: 0 1.5rem;
+      height: 80px;
+    }
+    
+    #waveformCanvas {
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: var(--radius-button);
+      border: var(--glass-border);
+    }
+
+    /* Transcript Area */
+    .transcript-area {
+      flex: 1;
+      padding: 1.5rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .message {
+      max-width: 80%;
+      padding: 1rem 1.25rem;
+      border-radius: var(--radius-bubble);
+      font-size: 0.95rem;
+      line-height: 1.5;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg-user {
+      align-self: flex-start;
+      background: rgba(59, 130, 246, 0.2);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-bottom-right-radius: 4px;
+    }
+
+    .msg-agent {
+      align-self: flex-end;
+      background: rgba(255, 255, 255, 0.05);
+      border: var(--glass-border);
+      border-bottom-left-radius: 4px;
+    }
+
+    /* Thinking Animation */
+    .thinking {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      height: 24px;
+    }
+    
+    .thinking span {
+      width: 6px;
+      height: 6px;
+      background: var(--text-muted);
+      border-radius: 50%;
+      animation: bounce 1.4s infinite ease-in-out both;
+    }
+    
+    .thinking span:nth-child(1) { animation-delay: -0.32s; }
+    .thinking span:nth-child(2) { animation-delay: -0.16s; }
+    
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0); }
+      40% { transform: scale(1); }
+    }
+
+    /* Control Area */
+    .control-area {
+      padding: 1.5rem;
+      border-top: var(--glass-border);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 120px;
+    }
+
+    /* Gemini Live Mic Button */
+    .mic-btn-live {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 2px solid var(--primary);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 1.5rem;
+    }
+
+    .mic-btn-live.active {
+      background: var(--primary);
+      box-shadow: 0 0 20px var(--primary-glow);
+      animation: micPulse 2s infinite;
+    }
+
+    @keyframes micPulse {
+      0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7); }
+      70% { box-shadow: 0 0 0 20px rgba(99, 102, 241, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+    }
+
+    /* Pipeline PTT Button */
+    .ptt-btn {
+      padding: 1rem 2rem;
+      border-radius: 99px;
+      background: var(--primary);
+      border: none;
+      color: var(--text-main);
+      font-family: 'Cairo', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 0 15px var(--primary-glow);
+      display: none; /* hidden by default */
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .ptt-btn:active, .ptt-btn.recording {
+      background: var(--danger);
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+      transform: scale(0.95);
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <div class="header">
+      <div class="header-top">
+        <div class="title">صوت عقار</div>
+        <div class="badge">بيتا</div>
+      </div>
+      <div class="phone-input-group">
+        <input type="text" id="phoneInput" placeholder="رقم الهاتف (لربط الجلسة)..." value="+201000000000">
+        <button class="btn-reset" onclick="clearTranscript()">مسح</button>
+      </div>
+    </div>
+
+    <div class="mode-selector">
+      <button class="mode-btn active" id="modeLive" onclick="setMode('live')">Gemini Live</button>
+      <button class="mode-btn" id="modePipeline" onclick="setMode('pipeline')">Pipeline</button>
+    </div>
+
+    <div class="status-bar">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">غير متصل</span>
+    </div>
+
+    <div class="waveform-container">
+      <canvas id="waveformCanvas"></canvas>
+    </div>
+
+    <div class="transcript-area" id="transcriptArea">
+      <!-- Messages go here -->
+    </div>
+
+    <div class="control-area">
+      <!-- Gemini Live Mode Control -->
+      <button class="mic-btn-live" id="btnLive" onclick="toggleLiveConnection()">
+        🎙️
+      </button>
+
+      <!-- Pipeline Mode Control -->
+      <button class="ptt-btn" id="btnPipeline" 
+              onmousedown="startPipelineRecording()" 
+              onmouseup="stopPipelineRecording()"
+              ontouchstart="startPipelineRecording()" 
+              ontouchend="stopPipelineRecording()">
+        اضغط للتحدث
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // --- State & Globals ---
+    let currentMode = 'live';
+    let isLiveConnected = false;
+    let ws = null;
+    let audioContext = null;
+    let mediaStream = null;
+    let audioSource = null;
+    
+    // Live mode nodes
+    let pcmNode = null;
+    let playbackCtx = null;
+    let scheduledTime = 0;
+
+    // Pipeline mode
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let recordingInterval = null;
+    let recordingSeconds = 0;
+
+    // Visualizer
+    let analyser = null;
+    let drawVisual = null;
+
+    // UI Elements
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const transcriptArea = document.getElementById('transcriptArea');
+    const btnLive = document.getElementById('btnLive');
+    const btnPipeline = document.getElementById('btnPipeline');
+
+    // --- UI Helpers ---
+    function setStatus(state) {
+      statusDot.className = 'status-dot ' + state;
+      switch (state) {
+        case 'connected': statusText.textContent = 'متصل'; break;
+        case 'connecting': statusText.textContent = 'جارٍ الاتصال...'; break;
+        case 'listening': statusText.textContent = 'يستمع...'; break;
+        case 'processing': statusText.textContent = 'يعالج...'; break;
+        case 'speaking': statusText.textContent = 'يتكلم...'; break;
+        default: statusText.textContent = 'غير متصل'; break;
+      }
+    }
+
+    function addMessage(sender, text, isThinking = false) {
+      if (!isThinking && text.trim() === '') return null;
+      
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'message ' + (sender === 'user' ? 'msg-user' : 'msg-agent');
+      
+      if (isThinking) {
+        msgDiv.id = 'thinking-bubble';
+        msgDiv.innerHTML = '<div class="thinking"><span></span><span></span><span></span></div>';
+      } else {
+        msgDiv.textContent = text;
+      }
+      
+      transcriptArea.appendChild(msgDiv);
+      transcriptArea.scrollTop = transcriptArea.scrollHeight;
+      return msgDiv;
+    }
+
+    function removeThinking() {
+      const thinking = document.getElementById('thinking-bubble');
+      if (thinking) thinking.remove();
+    }
+
+    function clearTranscript() {
+      transcriptArea.innerHTML = '';
+    }
+
+    function setMode(mode) {
+      if (isLiveConnected || (ws && ws.readyState === WebSocket.OPEN)) {
+        alert('يرجى قطع الاتصال أولاً قبل تغيير الوضع');
+        return;
+      }
+      currentMode = mode;
+      document.getElementById('modeLive').classList.toggle('active', mode === 'live');
+      document.getElementById('modePipeline').classList.toggle('active', mode === 'pipeline');
+      
+      btnLive.style.display = mode === 'live' ? 'flex' : 'none';
+      btnPipeline.style.display = mode === 'pipeline' ? 'block' : 'none';
+      
+      setStatus('');
+    }
+
+    // --- Audio Visualizer ---
+    function setupVisualizer(source, actx) {
+      analyser = actx.createAnalyser();
+      analyser.fftSize = 2048;
+      source.connect(analyser);
+      drawWaveform();
+    }
+
+    function drawWaveform() {
+      const canvas = document.getElementById('waveformCanvas');
+      const ctx = canvas.getContext('2d');
+      // match container size
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+      
+      if (!analyser) {
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.3)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#818cf8';
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height / 2);
+        ctx.lineTo(canvas.width, canvas.height / 2);
+        ctx.stroke();
+        return;
+      }
+
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      
+      function draw() {
+        drawVisual = requestAnimationFrame(draw);
+        analyser.getByteTimeDomainData(dataArray);
+        
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.3)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#818cf8';
+        ctx.beginPath();
+        
+        const sliceWidth = canvas.width / bufferLength;
+        let x = 0;
+        
+        for (let i = 0; i < bufferLength; i++) {
+          const v = dataArray[i] / 128.0;
+          const y = (v * canvas.height) / 2;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+          x += sliceWidth;
+        }
+        ctx.lineTo(canvas.width, canvas.height / 2);
+        ctx.stroke();
+      }
+      draw();
+    }
+
+    // initialize flat line
+    drawWaveform();
+
+    // --- AudioWorklet Workaround (Inline code as Blob for single file) ---
+    const pcmProcessorCode = `
+      class PCMProcessor extends AudioWorkletProcessor {
+        process(inputs, outputs, parameters) {
+          const input = inputs[0];
+          if (input && input.length > 0) {
+            const channelData = input[0];
+            const pcmData = new Int16Array(channelData.length);
+            for (let i = 0; i < channelData.length; i++) {
+              pcmData[i] = Math.max(-32768, Math.min(32767, Math.floor(channelData[i] * 32768)));
+            }
+            this.port.postMessage(pcmData.buffer, [pcmData.buffer]);
+          }
+          return true;
+        }
+      }
+      registerProcessor('pcm-processor', PCMProcessor);
+    `;
+
+    // --- Gemini Live Mode Implementation ---
+    async function toggleLiveConnection() {
+      if (isLiveConnected) {
+        disconnectLive();
+      } else {
+        await connectLive();
+      }
+    }
+
+    async function connectLive() {
+      const phone = document.getElementById('phoneInput').value;
+      if (!phone) return alert('يرجى إدخال رقم الهاتف');
+      
+      setStatus('connecting');
+      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(`${protocol}//${location.host}/ws/voice-live?phone=${encodeURIComponent(phone)}`);
+      ws.binaryType = 'arraybuffer';
+
+      ws.onopen = async () => {
+        setStatus('connected');
+        isLiveConnected = true;
+        btnLive.classList.add('active');
+
+        // Setup capture
+        audioContext = new AudioContext({ sampleRate: 16000 });
+        playbackCtx = new AudioContext({ sampleRate: 24000 });
+        scheduledTime = 0;
+
+        try {
+          mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          audioSource = audioContext.createMediaStreamSource(mediaStream);
+          
+          setupVisualizer(audioSource, audioContext);
+
+          // Load Worklet from Blob
+          const blob = new Blob([pcmProcessorCode], { type: 'application/javascript' });
+          const workletUrl = URL.createObjectURL(blob);
+          await audioContext.audioWorklet.addModule(workletUrl);
+          
+          pcmNode = new AudioWorkletNode(audioContext, 'pcm-processor');
+          audioSource.connect(pcmNode);
+          pcmNode.connect(audioContext.destination);
+
+          pcmNode.port.onmessage = (event) => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+              ws.send(event.data);
+            }
+          };
+          
+          setStatus('listening');
+
+        } catch (err) {
+          console.error('Audio setup failed:', err);
+          setStatus('');
+          disconnectLive();
+          alert('فشل في الوصول إلى الميكروفون');
+        }
+      };
+
+      ws.onmessage = (event) => {
+        if (event.data instanceof ArrayBuffer) {
+          playPcmChunk(event.data);
+          setStatus('speaking');
+        } else {
+          try {
+            const msg = JSON.parse(event.data);
+            if (msg.type === 'transcript') {
+              if (msg.role === 'user') addMessage('user', msg.text);
+              else addMessage('agent', msg.text);
+            }
+            if (msg.type === 'status') {
+              if (msg.status === 'listening') setStatus('listening');
+              if (msg.status === 'processing') setStatus('processing');
+            }
+          } catch(e) {}
+        }
+      };
+
+      ws.onclose = () => {
+        disconnectLive();
+      };
+      
+      ws.onerror = (err) => {
+        console.error('Live WS error:', err);
+        disconnectLive();
+      };
+    }
+
+    function playPcmChunk(arrayBuffer) {
+      if (!playbackCtx) return;
+      const int16 = new Int16Array(arrayBuffer);
+      const float32 = new Float32Array(int16.length);
+      for (let i = 0; i < int16.length; i++) {
+        float32[i] = int16[i] / 32768;
+      }
+      const audioBuffer = playbackCtx.createBuffer(1, float32.length, 24000);
+      audioBuffer.getChannelData(0).set(float32);
+      const source = playbackCtx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(playbackCtx.destination);
+      
+      const now = playbackCtx.currentTime;
+      const startTime = Math.max(now, scheduledTime);
+      source.start(startTime);
+      scheduledTime = startTime + audioBuffer.duration;
+
+      source.onended = () => {
+        // Fallback to listening status if queue is done
+        if (playbackCtx.currentTime >= scheduledTime - 0.1) {
+          if (isLiveConnected) setStatus('listening');
+        }
+      };
+    }
+
+    function disconnectLive() {
+      if (ws) { ws.close(); ws = null; }
+      if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+      if (audioContext) { audioContext.close(); audioContext = null; }
+      if (playbackCtx) { playbackCtx.close(); playbackCtx = null; }
+      if (drawVisual) { cancelAnimationFrame(drawVisual); drawVisual = null; }
+      
+      analyser = null;
+      isLiveConnected = false;
+      btnLive.classList.remove('active');
+      setStatus('');
+      drawWaveform(); // reset to flat line
+    }
+
+    // --- Pipeline Mode Implementation ---
+    async function initPipelineWS() {
+      if (ws && ws.readyState === WebSocket.OPEN) return true;
+      
+      return new Promise((resolve, reject) => {
+        const phone = document.getElementById('phoneInput').value;
+        if (!phone) {
+          alert('يرجى إدخال رقم الهاتف');
+          return reject(false);
+        }
+        
+        setStatus('connecting');
+        const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        ws = new WebSocket(`${protocol}//${location.host}/ws/voice-pipeline?phone=${encodeURIComponent(phone)}`);
+        ws.binaryType = 'arraybuffer';
+
+        ws.onopen = () => {
+          setStatus('connected');
+          resolve(true);
+        };
+        
+        ws.onmessage = (event) => {
+          if (event.data instanceof ArrayBuffer) {
+            removeThinking();
+            setStatus('speaking');
+            const blob = new Blob([event.data], { type: 'audio/wav' });
+            const audio = new Audio(URL.createObjectURL(blob));
+            audio.play();
+            audio.onended = () => setStatus('connected');
+          } else {
+            try {
+              const msg = JSON.parse(event.data);
+              if (msg.type === 'transcript') {
+                addMessage('user', msg.text);
+              } else if (msg.type === 'reply_text') {
+                removeThinking();
+                addMessage('agent', msg.text);
+              } else if (msg.type === 'audio_end') {
+                // Done playing
+              } else if (msg.type === 'error') {
+                removeThinking();
+                addMessage('agent', 'خطأ: ' + msg.message);
+                setStatus('connected');
+              }
+            } catch(e) {}
+          }
+        };
+        
+        ws.onclose = () => { setStatus(''); ws = null; };
+        ws.onerror = (err) => { setStatus(''); ws = null; reject(false); };
+      });
+    }
+
+    async function startPipelineRecording() {
+      if (mediaRecorder && mediaRecorder.state === 'recording') return;
+      
+      const ready = await initPipelineWS();
+      if (!ready) return;
+
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        // Setup visualizer
+        audioContext = new AudioContext();
+        audioSource = audioContext.createMediaStreamSource(mediaStream);
+        setupVisualizer(audioSource, audioContext);
+
+        mediaRecorder = new MediaRecorder(mediaStream, { mimeType: 'audio/webm;codecs=opus' });
+        recordedChunks = [];
+        
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) recordedChunks.push(e.data);
+        };
+        
+        mediaRecorder.start(250);
+        setStatus('listening');
+        btnPipeline.classList.add('recording');
+        
+        recordingSeconds = 0;
+        btnPipeline.textContent = 'يسجل (0s)';
+        recordingInterval = setInterval(() => {
+          recordingSeconds++;
+          btnPipeline.textContent = `يسجل (${recordingSeconds}s)`;
+        }, 1000);
+
+      } catch (err) {
+        console.error('Mic error:', err);
+        alert('فشل الوصول للميكروفون');
+      }
+    }
+
+    function stopPipelineRecording() {
+      if (!mediaRecorder || mediaRecorder.state !== 'recording') return;
+      
+      clearInterval(recordingInterval);
+      btnPipeline.textContent = 'اضغط للتحدث';
+      btnPipeline.classList.remove('recording');
+      
+      mediaRecorder.stop();
+      mediaRecorder.onstop = async () => {
+        setStatus('processing');
+        addMessage('agent', '', true); // Show thinking
+        
+        const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+        const arrayBuffer = await blob.arrayBuffer();
+        
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(arrayBuffer);
+          ws.send(JSON.stringify({ type: 'audio_end' }));
+        }
+
+        // Cleanup stream & visualizer
+        mediaStream.getTracks().forEach(t => t.stop());
+        if (audioContext) audioContext.close();
+        if (drawVisual) cancelAnimationFrame(drawVisual);
+        analyser = null;
+        drawWaveform(); // reset visualizer
+      };
+    }
+
+    // Resize handling for canvas
+    window.addEventListener('resize', () => {
+      if (!isLiveConnected && (!mediaRecorder || mediaRecorder.state !== 'recording')) {
+        drawWaveform();
+      }
+    });
+
+  </script>
+</body>
+</html>

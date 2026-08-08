@@ -89,15 +89,20 @@ export class CustomChatModel extends BaseChatModel {
       }
     }
 
+    // LangGraph requires at least content or tool_calls to be non-empty
+    const finalContent = (!content && toolCalls.length === 0)
+      ? 'معلش، مقدرتش أفهم طلبك. ممكن تعيد تاني؟'
+      : content;
+
     const aiMessage = new AIMessage({
-      content,
+      content: finalContent,
       tool_calls: toolCalls,
     });
 
     return {
       generations: [
         {
-          text: content,
+          text: finalContent,
           message: aiMessage,
         }
       ]

@@ -2,6 +2,7 @@ import { env } from '../../config/env.js';
 import type { ITtsService } from './interface.js';
 import { GeminiTtsService } from './providers/gemini.js';
 import { ElevenLabsTtsService } from './providers/elevenlabs.js';
+import { ResilientTtsService } from './resilient_tts_service.js';
 
 export class TtsServiceFactory {
   /**
@@ -22,4 +23,12 @@ export class TtsServiceFactory {
 
 // Export default active TTS service based on env setting
 export const ttsService = TtsServiceFactory.create(env.TTS_PROVIDER as 'gemini' | 'elevenlabs');
+
+// Export resilient TTS service with automatic Gemini → ElevenLabs fallback
+export const resilientTtsService = new ResilientTtsService(
+  new GeminiTtsService(),
+  new ElevenLabsTtsService()
+);
+
 export default ttsService;
+
