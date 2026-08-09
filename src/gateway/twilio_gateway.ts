@@ -6,23 +6,19 @@ import { propertyRetrievalTool } from '../tools/property_retrieval_tool.js';
 import { saveUserProfileTool } from '../tools/user_profile_tool.js';
 import { memoryManager } from '../infrastructure/memory/index.js';
 import { getOrCreateUser } from '../utils/user_helper.js';
+import { decodeMuLaw, encodeMuLaw, resample8To16, resample24To8 } from '../utils/audio_helper.js';
 import { env } from '../config/env.js';
 
-export class GeminiLiveGateway {
+export class TwilioGateway {
   async handleConnection(ws: WebSocket, url: URL) {
-    const phone = url.searchParams.get('phone');
-    if (!phone) {
-      ws.send(JSON.stringify({ type: 'error', message: 'Phone number is required' }));
-      ws.close();
-      return;
-    }
+    const phone = url.searchParams.get('phone') || 'unknown_twilio';
+    console.log(`📞 Twilio Gateway: New call stream connection for phone ${phone}`);
 
     // --- User lookup/registration via centralized helper ---
     const { userId, userName } = await getOrCreateUser(phone);
-    console.log(`👤 Gemini Live: Recognized user "${userName}" (${userId})`);
+    console.log(`👤 Twilio: Recognized user "${userName}" (${userId})`);
 
-    // --- Session + Memory ---
-    const sessionId = `live_${Date.now()}`;
+    const sessionId = `twilio_${Date.now()}`;
     await memoryManager.onCallStart(sessionId, userId);
 
     // --- Manual Opik Session Tracing ---
@@ -37,7 +33,7 @@ export class GeminiLiveGateway {
 
         const opik = new Opik();
         trace = opik.trace({
-          name: 'Gemini Live Session',
+          name: 'Twilio Live Session',
           input: {
             phone,
             sessionId,
@@ -45,7 +41,7 @@ export class GeminiLiveGateway {
             userName,
           },
         });
-        console.log(`📝 Opik: Started trace tracking for Gemini Live session ${sessionId}`);
+        console.log(`📝 Opik: Started trace tracking for Twilio Live session ${sessionId}`);
       } catch (err) {
         console.error('⚠️ Failed to initialize manual Opik trace:', err);
       }
@@ -53,8 +49,9 @@ export class GeminiLiveGateway {
 
     // --- Gemini Live API connection ---
     const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
-
     let session: any;
+    let streamSid = '';
+
     try {
       session = await ai.live.connect({
         model: env.GEMINI_LIVE_MODEL,
@@ -109,27 +106,38 @@ export class GeminiLiveGateway {
         },
         callbacks: {
           onopen: () => {
-            console.log('⚡ Connected to Gemini Live API');
-            ws.send(JSON.stringify({ type: 'status', status: 'ready' }));
+            console.log('⚡ Connected to Gemini Live API for Twilio Stream');
           },
           onmessage: async (message: any) => {
             try {
-              // --- Handle audio response chunks from Gemini ---
+              // --- Handle audio response from Gemini ---
               if (message.serverContent?.modelTurn?.parts) {
                 for (const part of message.serverContent.modelTurn.parts) {
                   // Audio chunk
                   if (part.inlineData?.mimeType?.startsWith('audio/')) {
-                    const audioBuffer = Buffer.from(part.inlineData.data, 'base64');
-                    if (ws.readyState === 1) { // WebSocket.OPEN
-                      ws.send(audioBuffer);
+                    const audioBuffer24k = Buffer.from(part.inlineData.data, 'base64');
+                    
+                    // Resample: 24kHz PCM -> 8kHz PCM (Central helper)
+                    const audioBuffer8k = resample24To8(audioBuffer24k);
+                    // Encode: 8kHz PCM -> 8kHz Mulaw (Central helper)
+                    const mulawBuffer = encodeMuLaw(audioBuffer8k);
+                    
+                    // Send to Twilio via WebSocket
+                    if (ws.readyState === 1 && streamSid) {
+                      ws.send(JSON.stringify({
+                        event: 'media',
+                        streamSid: streamSid,
+                        media: {
+                          payload: mulawBuffer.toString('base64'),
+                        },
+                      }));
                     }
                   }
-                  // Text part (agent response transcript)
+                  // Text part
                   if (part.text) {
-                    console.log(`🤖 Gemini Live response: "${part.text.substring(0, 100)}..."`);
+                    console.log(`🤖 Twilio Gemini Response: "${part.text.substring(0, 100)}..."`);
                     await memoryManager.onAgentResponse(sessionId, part.text);
 
-                    // Track agent response span in Opik
                     if (trace) {
                       try {
                         const agentSpan = trace.span({
@@ -149,19 +157,13 @@ export class GeminiLiveGateway {
                 }
               }
 
-              // --- Handle turn completion (detect user transcript) ---
-              if (message.serverContent?.turnComplete) {
-                console.log('✅ Turn complete');
-              }
-
-              // --- Handle user transcripts (client content) ---
+              // --- Handle user transcripts ---
               if (message.serverContent?.clientContent?.parts) {
                 for (const part of message.serverContent.clientContent.parts) {
                   if (part.text) {
-                    console.log(`👤 User transcript detected: "${part.text}"`);
+                    console.log(`👤 Twilio User transcript: "${part.text}"`);
                     await memoryManager.onUserMessage(sessionId, part.text, userId);
 
-                    // Track user speech span in Opik
                     if (trace) {
                       try {
                         const userSpan = trace.span({
@@ -181,9 +183,8 @@ export class GeminiLiveGateway {
               // --- Handle tool calls ---
               if (message.toolCall) {
                 for (const call of message.toolCall.functionCalls) {
-                  console.log(`🔧 Tool call: ${call.name}(${JSON.stringify(call.args)})`);
+                  console.log(`🔧 Twilio Tool call: ${call.name}(${JSON.stringify(call.args)})`);
 
-                  // Start tool span in Opik
                   let toolSpan: any = null;
                   if (trace) {
                     try {
@@ -222,7 +223,6 @@ export class GeminiLiveGateway {
                     }
                   }
 
-                  // Update tool span output in Opik
                   if (toolSpan) {
                     try {
                       toolSpan.update({
@@ -234,7 +234,6 @@ export class GeminiLiveGateway {
                     }
                   }
 
-                  // Send tool response back to Gemini
                   session.sendToolResponse({
                     functionResponses: [
                       {
@@ -247,46 +246,58 @@ export class GeminiLiveGateway {
                 }
               }
             } catch (err: any) {
-              console.error('❌ Error processing Gemini message:', err);
+              console.error('❌ Twilio Gateway: Error processing Gemini message:', err);
             }
           },
           onerror: (err: any) => {
-            console.error('❌ Gemini Live API error:', err?.message || err);
-            try {
-              ws.send(JSON.stringify({ type: 'error', message: 'Gemini Live error' }));
-            } catch {}
+            console.error('❌ Twilio Gateway: Gemini Live error:', err?.message || err);
           },
           onclose: (e: any) => {
-            console.log('🔴 Gemini Live session closed:', e?.reason || 'unknown');
+            console.log('🔴 Twilio Gateway: Gemini Live session closed:', e?.reason || 'unknown');
           },
         },
       });
     } catch (err: any) {
-      console.error('❌ Failed to connect to Gemini Live:', err);
-      ws.send(JSON.stringify({ type: 'error', message: err.message }));
+      console.error('❌ Twilio Gateway: Failed to connect to Gemini Live:', err);
       ws.close();
       return;
     }
 
-    // --- Forward browser PCM audio to Gemini ---
-    ws.on('message', (data: Buffer) => {
-      if (!session) return;
+    // --- Process incoming Twilio WebSocket messages ---
+    ws.on('message', (message: string) => {
       try {
-        const base64Audio = Buffer.from(data).toString('base64');
-        session.sendRealtimeInput({
-          audio: {
-            data: base64Audio,
-            mimeType: 'audio/pcm;rate=16000',
-          },
-        });
+        const data = JSON.parse(message);
+
+        if (data.event === 'start') {
+          streamSid = data.streamSid;
+          console.log(`🎬 Twilio: Audio stream started with streamSid: ${streamSid}`);
+        } else if (data.event === 'media') {
+          if (!session) return;
+          const mulawBuffer = Buffer.from(data.media.payload, 'base64');
+          
+          // Decode: 8kHz Mulaw -> 8kHz PCM (Central helper)
+          const pcmBuffer8k = decodeMuLaw(mulawBuffer);
+          // Resample: 8kHz PCM -> 16kHz PCM (Central helper)
+          const pcmBuffer16k = resample8To16(pcmBuffer8k);
+
+          // Forward 16kHz PCM to Gemini Live
+          session.sendRealtimeInput({
+            audio: {
+              data: pcmBuffer16k.toString('base64'),
+              mimeType: 'audio/pcm;rate=16000',
+            },
+          });
+        } else if (data.event === 'stop') {
+          console.log('🎬 Twilio: Audio stream stopped');
+        }
       } catch (err) {
-        console.error('❌ Error forwarding audio to Gemini:', err);
+        console.error('❌ Twilio Gateway: Error processing Twilio message:', err);
       }
     });
 
     // --- Cleanup on disconnect ---
     ws.on('close', async () => {
-      console.log('🔴 Gemini Live client disconnected');
+      console.log('🔴 Twilio client disconnected');
       try {
         if (session) session.close();
       } catch {}
@@ -296,13 +307,12 @@ export class GeminiLiveGateway {
         console.error('Error ending call:', err);
       }
 
-      // End manual trace in Opik and flush to API
       if (trace) {
         try {
           trace.end();
           const opik = new Opik();
           await opik.flush();
-          console.log(`✅ Opik: Flushed manual trace for Gemini Live session ${sessionId}`);
+          console.log(`✅ Opik: Flushed manual trace for Twilio Live session ${sessionId}`);
         } catch (opikErr) {
           console.error('⚠️ Opik trace flush failed:', opikErr);
         }
@@ -310,10 +320,7 @@ export class GeminiLiveGateway {
     });
 
     ws.on('error', (err) => {
-      console.error('❌ WebSocket error:', err);
+      console.error('❌ Twilio WebSocket error:', err);
     });
   }
 }
-
-export const geminiLiveGateway = new GeminiLiveGateway();
-export default GeminiLiveGateway;

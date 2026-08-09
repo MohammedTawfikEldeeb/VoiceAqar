@@ -6,6 +6,7 @@ import { env } from './config/env.js';
 import { initializeAgent } from './agent/voiceaqar_agent.js';
 import { GeminiLiveGateway } from './gateway/gemini_live_gateway.js';
 import { PipelineVoiceGateway } from './gateway/pipeline_voice_gateway.js';
+import { TwilioGateway } from './gateway/twilio_gateway.js';
 import chatRouter from './routes/chat.routes.js';
 import voiceRouter from './routes/voice.routes.js';
 import healthRouter from './routes/health.routes.js';
@@ -28,6 +29,7 @@ const server = createServer(app);
 // Initialize voice gateways
 const geminiLiveGateway = new GeminiLiveGateway();
 const pipelineGateway = new PipelineVoiceGateway();
+const twilioGateway = new TwilioGateway();
 
 // Attach WebSocket server
 const wss = new WebSocketServer({ server });
@@ -42,6 +44,9 @@ wss.on('connection', (ws, req) => {
   } else if (pathname === '/ws/voice-pipeline' && ['pipeline', 'both'].includes(env.VOICE_MODE)) {
     console.log('🎤 New Pipeline voice connection');
     pipelineGateway.handleConnection(ws, url);
+  } else if (pathname === '/ws/twilio') {
+    console.log('🎤 New Twilio Stream voice connection');
+    twilioGateway.handleConnection(ws, url);
   } else {
     console.warn(`⚠️ Unknown WebSocket path: ${pathname}`);
     ws.close(4004, 'Unknown path or mode disabled');
@@ -62,6 +67,7 @@ server.listen(PORT, async () => {
     if (['pipeline', 'both'].includes(env.VOICE_MODE)) {
       console.log(`  🔄 Pipeline:    ws://localhost:${PORT}/ws/voice-pipeline`);
     }
+    console.log(`  📞 Twilio Stream: ws://localhost:${PORT}/ws/twilio`);
     console.log(`📝 Text chat:    http://localhost:${PORT}/chat`);
     console.log(`🎤 Voice chat:   http://localhost:${PORT}/voice`);
     console.log(' Initialization complete. Server is ready to receive calls, voice streams, and chat messages!');
