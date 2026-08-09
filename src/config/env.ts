@@ -24,7 +24,7 @@ const envSchema = z.object({
   OPIK_WORKSPACE: z.string().optional(),
   OPIK_PROJECT_NAME: z.string().default('voiceaqar'),
   VOICE_MODE: z.enum(['live', 'pipeline', 'both']).default('both'),
-  GEMINI_LIVE_MODEL: z.string().default('gemini-2.5-flash-native-audio-dialog'),
+  GEMINI_LIVE_MODEL: z.string().default('gemini-3.1-flash-live-preview'),
   GEMINI_LIVE_VOICE: z.string().default('Puck'),
 });
 

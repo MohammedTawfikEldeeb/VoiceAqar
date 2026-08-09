@@ -20,7 +20,6 @@ export class GeminiLiveGateway {
       return;
     }
 
-    // --- User lookup/registration ---
     let userId: string;
     let userName = 'anonymous';
     try {
@@ -28,14 +27,14 @@ export class GeminiLiveGateway {
       if (existing.length > 0) {
         userId = existing[0].userId;
         userName = existing[0].name || 'anonymous';
-        console.log(`👤 Gemini Live: Recognized user "${userName}" (${userId})`);
+        console.log(`Gemini Live: Recognized user "${userName}" (${userId})`);
       } else {
         userId = `usr_${crypto.randomUUID()}`;
         await db.insert(users).values({ userId, phoneNumber: phone });
-        console.log(`👤 Gemini Live: Registered new user (${userId})`);
+        console.log(`Gemini Live: Registered new user (${userId})`);
       }
     } catch (err: any) {
-      console.error('❌ Database error during user lookup:', err);
+      console.error('Database error during user lookup:', err);
       ws.send(JSON.stringify({ type: 'error', message: 'Database error' }));
       ws.close();
       return;
@@ -103,7 +102,7 @@ export class GeminiLiveGateway {
         },
         callbacks: {
           onopen: () => {
-            console.log('⚡ Connected to Gemini Live API');
+            console.log('Connected to Gemini Live API');
             ws.send(JSON.stringify({ type: 'status', status: 'ready' }));
           },
           onmessage: async (message: any) => {
@@ -120,7 +119,7 @@ export class GeminiLiveGateway {
                   }
                   // Text part (agent response transcript)
                   if (part.text) {
-                    console.log(`🤖 Gemini Live response: "${part.text.substring(0, 100)}..."`);
+                    console.log(`Gemini Live response: "${part.text.substring(0, 100)}..."`);
                     await memoryManager.onAgentResponse(sessionId, part.text);
                   }
                 }
@@ -128,13 +127,13 @@ export class GeminiLiveGateway {
 
               // --- Handle turn completion (detect user transcript) ---
               if (message.serverContent?.turnComplete) {
-                console.log('✅ Turn complete');
+                console.log('Turn complete');
               }
 
               // --- Handle tool calls ---
               if (message.toolCall) {
                 for (const call of message.toolCall.functionCalls) {
-                  console.log(`🔧 Tool call: ${call.name}(${JSON.stringify(call.args)})`);
+                  console.log(`Tool call: ${call.name}(${JSON.stringify(call.args)})`);
 
                   let resultString = '';
 
@@ -147,35 +146,34 @@ export class GeminiLiveGateway {
                   }
 
                   // Send tool response back to Gemini
-                  session.send({
-                    toolResponse: {
-                      functionResponses: [
-                        {
-                          response: { output: resultString },
-                          id: call.id,
-                        },
-                      ],
-                    },
+                  session.sendToolResponse({
+                    functionResponses: [
+                      {
+                        name: call.name,
+                        response: { output: resultString },
+                        id: call.id,
+                      },
+                    ],
                   });
                 }
               }
             } catch (err: any) {
-              console.error('❌ Error processing Gemini message:', err);
+              console.error('Error processing Gemini message:', err);
             }
           },
           onerror: (err: any) => {
-            console.error('❌ Gemini Live API error:', err?.message || err);
+            console.error('Gemini Live API error:', err?.message || err);
             try {
               ws.send(JSON.stringify({ type: 'error', message: 'Gemini Live error' }));
             } catch {}
           },
           onclose: (e: any) => {
-            console.log('🔴 Gemini Live session closed:', e?.reason || 'unknown');
+            console.log('Gemini Live session closed:', e?.reason || 'unknown');
           },
         },
       });
     } catch (err: any) {
-      console.error('❌ Failed to connect to Gemini Live:', err);
+      console.error('Failed to connect to Gemini Live:', err);
       ws.send(JSON.stringify({ type: 'error', message: err.message }));
       ws.close();
       return;
@@ -186,24 +184,20 @@ export class GeminiLiveGateway {
       if (!session) return;
       try {
         const base64Audio = Buffer.from(data).toString('base64');
-        session.send({
-          realtimeInput: {
-            mediaChunks: [
-              {
-                mimeType: 'audio/pcm;rate=16000',
-                data: base64Audio,
-              },
-            ],
+        session.sendRealtimeInput({
+          audio: {
+            data: base64Audio,
+            mimeType: 'audio/pcm;rate=16000',
           },
         });
       } catch (err) {
-        console.error('❌ Error forwarding audio to Gemini:', err);
+        console.error('Error forwarding audio to Gemini:', err);
       }
     });
 
     // --- Cleanup on disconnect ---
     ws.on('close', async () => {
-      console.log('🔴 Gemini Live client disconnected');
+      console.log('Gemini Live client disconnected');
       try {
         if (session) session.close();
       } catch {}
@@ -215,7 +209,7 @@ export class GeminiLiveGateway {
     });
 
     ws.on('error', (err) => {
-      console.error('❌ WebSocket error:', err);
+      console.error(' WebSocket error:', err);
     });
   }
 
@@ -271,7 +265,7 @@ export class GeminiLiveGateway {
         })
         .join('\n');
     } catch (err: any) {
-      console.error('❌ Property search error:', err);
+      console.error('Property search error:', err);
       return `Error searching properties: ${err.message}`;
     }
   }
@@ -289,7 +283,7 @@ export class GeminiLiveGateway {
       await graphMemory.upsertUser(userId, { name });
       return `Successfully saved profile for "${name}" (ID: ${userId})`;
     } catch (err: any) {
-      console.error('❌ Save profile error:', err);
+      console.error('Save profile error:', err);
       return `Error saving profile: ${err.message}`;
     }
   }
