@@ -89,17 +89,3 @@ export async function endChat(req: Request, res: Response) {
 export function serveChatPage(req: Request, res: Response) {
   res.sendFile(path.resolve('test_text_client.html'));
 }
-
-/**
- * Serves the voice chat client UI.
- */
-export function serveVoicePage(req: Request, res: Response) {
-  res.sendFile(path.resolve('test_voice_client.html'));
-}
-
-/**
- * Handles server health checks.
- */
-export function handleHealth(req: Request, res: Response) {
-  res.json({ status: 'ok', message: 'VoiceAqar Server is running' });
-}

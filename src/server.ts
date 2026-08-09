@@ -6,7 +6,9 @@ import { env } from './config/env.js';
 import { initializeAgent } from './agent/voiceaqar_agent.js';
 import { GeminiLiveGateway } from './gateway/gemini_live_gateway.js';
 import { PipelineVoiceGateway } from './gateway/pipeline_voice_gateway.js';
-import chatRouter from './routes/chat_routes.js';
+import chatRouter from './routes/chat.routes.js';
+import voiceRouter from './routes/voice.routes.js';
+import healthRouter from './routes/health.routes.js';
 
 const app = express();
 app.use(express.urlencoded({ extended: true }));
@@ -15,8 +17,10 @@ app.use(express.json());
 // Serve static assets (AudioWorklet processor, etc.)
 app.use('/public', express.static(path.resolve('public')));
 
-// Mount routes from the controller/router system
+// Mount routes from the MVC systems
 app.use(chatRouter);
+app.use(voiceRouter);
+app.use(healthRouter);
 
 // --- HTTP + WebSocket Server ---
 const server = createServer(app);
