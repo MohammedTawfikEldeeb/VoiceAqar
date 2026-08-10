@@ -58,7 +58,7 @@ export class MemoryManager {
     if (userId) {
       await this.graph.upsertUser(userId);
       const userContext = await this.graph.getUserContext(userId);
-      this.context.injectMemorySummary(userContext);
+      this.context.injectMemorySummary(sessionId, userContext);
     }
 
     console.log(`Call started: session=${sessionId}, user=${userId || 'anonymous'}`);
@@ -91,8 +91,8 @@ export class MemoryManager {
    * Stores the result in the in-memory context window and Redis.
    */
   async onToolResult(sessionId: string, toolName: string, result: string): Promise<void> {
-    // Store in context window for Gemini Live API
-    this.context.addToolResult(toolName, result);
+    // Store in the session-scoped context window for the Live API
+    this.context.addToolResult(sessionId, toolName, result);
 
     // Also record in Redis turns as a tool response
     await this.working.pushTurn(sessionId, 'tool', `[${toolName}]: ${result.substring(0, 500)}`);
@@ -106,8 +106,8 @@ export class MemoryManager {
     // Clean up transient Redis session
     await this.working.deleteSession(sessionId);
 
-    // Reset the in-memory context window
-    this.context.reset();
+    // Reset the session-scoped context window
+    this.context.reset(sessionId);
 
     console.log(` Call ended: session=${sessionId}, user=${userId || 'anonymous'}`);
   }
@@ -126,11 +126,11 @@ export class MemoryManager {
     // 2. If user is known, refresh context from graph memory
     if (userId) {
       const userContext = await this.graph.getUserContext(userId);
-      this.context.injectMemorySummary(userContext);
+      this.context.injectMemorySummary(sessionId, userContext);
     }
 
     // 3. Build the system prompt with all injected context
-    const liveContext = this.context.getContextForLiveApi(recentTurns);
+    const liveContext = this.context.getContextForLiveApi(sessionId, recentTurns);
 
     return {
       systemPrompt: liveContext.systemPrompt,
@@ -157,6 +157,13 @@ export class MemoryManager {
    */
   async recordPropertyInteraction(userId: string, propertyId: string, interactionType: string): Promise<void> {
     await this.graph.addPropertyInteraction(userId, propertyId, interactionType);
+  }
+
+  /**
+   * Evict idle session context windows. Called periodically by the sweeper.
+   */
+  cleanupIdleSessions(nowMs: number = Date.now()): void {
+    this.context.cleanupExpiredIds(nowMs);
   }
 }
 

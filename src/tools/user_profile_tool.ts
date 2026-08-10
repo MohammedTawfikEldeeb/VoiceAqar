@@ -41,7 +41,7 @@ export const saveUserProfileTool = tool(
           userId: activeUserId,
           name,
           phoneNumber: phoneNumber || 'unknown',
-        });
+        }).onConflictDoNothing();
       }
 
       // 4. Upsert in Neo4j Graph Memory to keep knowledge graph in sync

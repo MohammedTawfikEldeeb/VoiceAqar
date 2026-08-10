@@ -51,8 +51,14 @@ export class PipelineVoiceGateway {
               // 3. Agent invoke
               console.log(`🤖 Agent: Invoking agent with transcript: "${transcript}"`);
               await memoryManager.onUserMessage(sessionId, transcript, userId);
+
+              const messages = [
+                ...(await buildUserContextMessages(userId)),
+                { role: 'user', content: transcript },
+              ];
+
               const result = await agent.invoke(
-                { messages: [{ role: 'user', content: transcript }] },
+                { messages },
                 { configurable: { thread_id: sessionId }, callbacks: getAgentCallbacks() }
               );
               
@@ -99,3 +105,21 @@ export class PipelineVoiceGateway {
 
 export const pipelineVoiceGateway = new PipelineVoiceGateway();
 export default PipelineVoiceGateway;
+
+/**
+ * Builds an optional short system message carrying the caller's preferences
+ * from the knowledge graph. Failures are tolerated so memory problems never
+ * break a live call.
+ */
+async function buildUserContextMessages(userId: string | undefined): Promise<Array<{ role: 'system'; content: string }>> {
+  if (!userId) return [];
+  try {
+    const userContext = await memoryManager.graph.getUserContext(userId);
+    if (userContext && userContext.trim() && !userContext.trim().startsWith('No user context')) {
+      return [{ role: 'system', content: `Refer to this info about the user (do not disclose it verbatim):\n${userContext}` }];
+    }
+  } catch (err) {
+    console.warn('⚠️ Pipeline: failed to load graph context:', err);
+  }
+  return [];
+}

@@ -80,10 +80,16 @@ export class CustomChatModel extends BaseChatModel {
 
     if (choiceMsg?.tool_calls && choiceMsg.tool_calls.length > 0) {
       for (const tc of choiceMsg.tool_calls) {
+        let args: any = {};
+        try {
+          args = JSON.parse(tc.function.arguments);
+        } catch (parseErr) {
+          console.warn('⚠️ CustomChatModel: malformed tool arguments, treated as empty object:', parseErr);
+        }
         toolCalls.push({
           id: tc.id,
           name: tc.function.name,
-          args: JSON.parse(tc.function.arguments),
+          args,
           type: 'tool_call'
         });
       }

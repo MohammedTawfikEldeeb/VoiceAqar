@@ -47,6 +47,7 @@
     "drizzle-kit": "^0.31.10",
     "drizzle-orm": "^0.45.2",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.6.2",
     "groq-sdk": "^1.5.0",
     "ioredis": "^6.0.0",
     "neo4j-driver": "^6.2.0",
@@ -54,6 +55,7 @@
     "opik": "^1.11.14",
     "opik-langchain": "^2.2.20",
     "pg": "^8.22.0",
+    "twilio": "^6.0.2",
     "ws": "^8.21.1",
     "zod": "^4.4.3",
     "zod-to-json-schema": "^3.25.2"

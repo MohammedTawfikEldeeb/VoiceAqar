@@ -1,9 +1,42 @@
-import { IContextWindowService, ContextEntry, LiveApiContext } from './interface.js';
+import { IContextWindowService, ContextEntry, LiveApiContext, SessionContext } from './interface.js';
 
+const DEFAULT_TTL_MS = 12 * 60 * 60 * 1000; // 12h
+
+/**
+ * Per-session multimodal context window.
+ *
+ * State is stored in a Map keyed by `sessionId` so concurrent calls never
+ * share memory summaries or tool results. Idle sessions are evicted after
+ * DEFAULT_TTL_MS to prevent unbounded growth.
+ */
 export class ContextWindowService implements IContextWindowService {
-  private memorySummary: string = '';
-  private toolResults: ContextEntry[] = [];
+  private sessions = new Map<string, { createdAt: number; lastTouchedAt: number; data: SessionContext }>();
   private maxToolResults: number = 10;
+  private ttlMs: number;
+
+  constructor(ttlMs: number = DEFAULT_TTL_MS) {
+    this.ttlMs = ttlMs;
+  }
+
+  private touch(sessionId: string): SessionContext | undefined {
+    const entry = this.sessions.get(sessionId);
+    if (!entry) return undefined;
+    entry.lastTouchedAt = Date.now();
+    return entry.data;
+  }
+
+  private ensure(sessionId: string): SessionContext {
+    let entry = this.sessions.get(sessionId);
+    if (!entry || entry.createdAt + this.ttlMs < Date.now()) {
+      entry = {
+        createdAt: Date.now(),
+        lastTouchedAt: Date.now(),
+        data: { memorySummary: '', toolResults: [] },
+      };
+      this.sessions.set(sessionId, entry);
+    }
+    return entry.data;
+  }
 
   buildSystemPrompt(userContext?: string): string {
     return `You are VoiceAqar (صوت عقار), an expert Egyptian real estate AI voice assistant.
@@ -27,38 +60,47 @@ export class ContextWindowService implements IContextWindowService {
 ${userContext ? `## User Context\n${userContext}` : ''}`;
   }
 
-  addToolResult(toolName: string, result: string): void {
-    this.toolResults.push({
+  addToolResult(sessionId: string, toolName: string, result: string): void {
+    const data = this.ensure(sessionId);
+    data.toolResults.push({
       source: `tool:${toolName}`,
       content: result,
       timestamp: new Date(),
     });
-    
-    if (this.toolResults.length > this.maxToolResults) {
-      this.toolResults = this.toolResults.slice(-this.maxToolResults);
+
+    if (data.toolResults.length > this.maxToolResults) {
+      data.toolResults = data.toolResults.slice(-this.maxToolResults);
     }
   }
 
-  getToolResults(): ContextEntry[] {
-    return [...this.toolResults];
+  getToolResults(sessionId: string): ContextEntry[] {
+    return [...(this.touch(sessionId)?.toolResults ?? [])];
   }
 
-  injectMemorySummary(summary: string): void {
-    this.memorySummary = summary;
+  injectMemorySummary(sessionId: string, summary: string): void {
+    this.ensure(sessionId).memorySummary = summary;
   }
 
-  getContextForLiveApi(recentTurns?: Array<{ role: string; content: string }>): LiveApiContext {
+  getContextForLiveApi(sessionId: string, recentTurns?: Array<{ role: string; content: string }>): LiveApiContext {
+    const data = this.touch(sessionId) ?? this.ensure(sessionId);
     return {
-      systemPrompt: this.buildSystemPrompt(this.memorySummary),
-      memorySummary: this.memorySummary,
-      recentToolResults: [...this.toolResults],
+      systemPrompt: this.buildSystemPrompt(data.memorySummary),
+      memorySummary: data.memorySummary,
+      recentToolResults: [...data.toolResults],
       recentTurns: recentTurns || [],
     };
   }
 
-  reset(): void {
-    this.memorySummary = '';
-    this.toolResults = [];
+  reset(sessionId: string): void {
+    this.sessions.delete(sessionId);
+  }
+
+  cleanupExpiredIds(nowMs: number = Date.now()): void {
+    for (const [id, entry] of this.sessions) {
+      if (nowMs - entry.lastTouchedAt > this.ttlMs) {
+        this.sessions.delete(id);
+      }
+    }
   }
 }
 

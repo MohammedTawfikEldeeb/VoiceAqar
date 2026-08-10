@@ -11,6 +11,7 @@ import { env } from '../config/env.js';
 
 export class TwilioGateway {
   async handleConnection(ws: WebSocket, url: URL) {
+    try {
     const phone = url.searchParams.get('phone') || 'unknown_twilio';
     console.log(`📞 Twilio Gateway: New call stream connection for phone ${phone}`);
 
@@ -41,9 +42,9 @@ export class TwilioGateway {
             userName,
           },
         });
-        console.log(`📝 Opik: Started trace tracking for Twilio Live session ${sessionId}`);
+        console.log(` Opik: Started trace tracking for Twilio Live session ${sessionId}`);
       } catch (err) {
-        console.error('⚠️ Failed to initialize manual Opik trace:', err);
+        console.error(' Failed to initialize manual Opik trace:', err);
       }
     }
 
@@ -106,7 +107,7 @@ export class TwilioGateway {
         },
         callbacks: {
           onopen: () => {
-            console.log('⚡ Connected to Gemini Live API for Twilio Stream');
+            console.log('Connected to Gemini Live API for Twilio Stream');
           },
           onmessage: async (message: any) => {
             try {
@@ -135,7 +136,7 @@ export class TwilioGateway {
                   }
                   // Text part
                   if (part.text) {
-                    console.log(`🤖 Twilio Gemini Response: "${part.text.substring(0, 100)}..."`);
+                    console.log(`Twilio Gemini Response: "${part.text.substring(0, 100)}..."`);
                     await memoryManager.onAgentResponse(sessionId, part.text);
 
                     if (trace) {
@@ -150,7 +151,7 @@ export class TwilioGateway {
                         });
                         agentSpan.end();
                       } catch (opikErr) {
-                        console.error('⚠️ Opik span logging failed:', opikErr);
+                        console.error('Opik span logging failed:', opikErr);
                       }
                     }
                   }
@@ -183,7 +184,7 @@ export class TwilioGateway {
               // --- Handle tool calls ---
               if (message.toolCall) {
                 for (const call of message.toolCall.functionCalls) {
-                  console.log(`🔧 Twilio Tool call: ${call.name}(${JSON.stringify(call.args)})`);
+                  console.log(`Twilio Tool call: ${call.name}(${JSON.stringify(call.args)})`);
 
                   let toolSpan: any = null;
                   if (trace) {
@@ -194,7 +195,7 @@ export class TwilioGateway {
                         input: call.args,
                       });
                     } catch (opikErr) {
-                      console.error('⚠️ Opik span logging failed:', opikErr);
+                      console.error('Opik span logging failed:', opikErr);
                     }
                   }
 
@@ -230,7 +231,7 @@ export class TwilioGateway {
                       });
                       toolSpan.end();
                     } catch (opikErr) {
-                      console.error('⚠️ Opik span update failed:', opikErr);
+                      console.error('Opik span update failed:', opikErr);
                     }
                   }
 
@@ -246,19 +247,19 @@ export class TwilioGateway {
                 }
               }
             } catch (err: any) {
-              console.error('❌ Twilio Gateway: Error processing Gemini message:', err);
+              console.error('Twilio Gateway: Error processing Gemini message:', err);
             }
           },
           onerror: (err: any) => {
-            console.error('❌ Twilio Gateway: Gemini Live error:', err?.message || err);
+            console.error(' Twilio Gateway: Gemini Live error:', err?.message || err);
           },
           onclose: (e: any) => {
-            console.log('🔴 Twilio Gateway: Gemini Live session closed:', e?.reason || 'unknown');
+            console.log(' Twilio Gateway: Gemini Live session closed:', e?.reason || 'unknown');
           },
         },
       });
     } catch (err: any) {
-      console.error('❌ Twilio Gateway: Failed to connect to Gemini Live:', err);
+      console.error(' Twilio Gateway: Failed to connect to Gemini Live:', err);
       ws.close();
       return;
     }
@@ -288,16 +289,16 @@ export class TwilioGateway {
             },
           });
         } else if (data.event === 'stop') {
-          console.log('🎬 Twilio: Audio stream stopped');
+          console.log('Twilio: Audio stream stopped');
         }
       } catch (err) {
-        console.error('❌ Twilio Gateway: Error processing Twilio message:', err);
+        console.error(' Twilio Gateway: Error processing Twilio message:', err);
       }
     });
 
     // --- Cleanup on disconnect ---
     ws.on('close', async () => {
-      console.log('🔴 Twilio client disconnected');
+      console.log(' Twilio client disconnected');
       try {
         if (session) session.close();
       } catch {}
@@ -312,15 +313,24 @@ export class TwilioGateway {
           trace.end();
           const opik = new Opik();
           await opik.flush();
-          console.log(`✅ Opik: Flushed manual trace for Twilio Live session ${sessionId}`);
+          console.log(`Opik: Flushed manual trace for Twilio Live session ${sessionId}`);
         } catch (opikErr) {
-          console.error('⚠️ Opik trace flush failed:', opikErr);
+          console.error('Opik trace flush failed:', opikErr);
         }
       }
     });
 
-    ws.on('error', (err) => {
+ws.on('error', (err) => {
       console.error('❌ Twilio WebSocket error:', err);
     });
+    } catch (err: any) {
+      console.error('❌ Twilio Gateway: Connection handler error:', err);
+      try {
+        if (ws.readyState === 1) {
+          ws.send(JSON.stringify({ type: 'error', message: err?.message || 'Internal error' }));
+        }
+      } catch {}
+      ws.close();
+    }
   }
 }

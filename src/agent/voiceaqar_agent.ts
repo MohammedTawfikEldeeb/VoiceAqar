@@ -1,6 +1,5 @@
 import { createReactAgent } from '@langchain/langgraph/prebuilt';
 import { PostgresSaver } from '@langchain/langgraph-checkpoint-postgres';
-import pg from 'pg';
 import { env } from '../config/env.js';
 import { propertyRetrievalTool } from '../tools/property_retrieval_tool.js';
 import { saveUserProfileTool } from '../tools/user_profile_tool.js';
@@ -19,10 +18,7 @@ function getChatModel() {
   return new CustomChatModel({ callbacks });
 }
 
-// 2. Initialize the Postgres Pool and Checkpointer Saver
-const pool = new pg.Pool({
-  connectionString: env.DATABASE_URL,
-});
+import { pool } from '../config/db.js';
 
 export const checkpointer = new PostgresSaver(pool);
 

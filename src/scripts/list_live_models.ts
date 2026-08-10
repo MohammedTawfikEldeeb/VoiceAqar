@@ -18,7 +18,8 @@ async function listLiveModels() {
     console.log('\n--- Models supporting bidiGenerateContent ---');
     let count = 0;
     for await (const model of response) {
-      if (model.supportedMethods && model.supportedMethods.some((m: string) => m.includes('bidiGenerateContent'))) {
+      const supportedMethods = (model as any).supportedMethods as string[] | undefined;
+      if (supportedMethods && supportedMethods.some((m: string) => m.includes('bidiGenerateContent'))) {
         console.log(`- ${model.name} (${model.displayName})`);
         count++;
       }
@@ -30,7 +31,7 @@ async function listLiveModels() {
     console.log('\n--- All Gemini models available ---');
     const response2 = await ai.models.list();
     for await (const model of response2) {
-      console.log(`- ${model.name} (${model.displayName}) | Methods: ${model.supportedMethods?.join(', ')}`);
+      console.log(`- ${model.name} (${model.displayName}) | Methods: ${((model as any).supportedMethods as string[] | undefined)?.join(', ') ?? 'n/a'}`);
     }
   } catch (error) {
     console.error('Error listing models:', error);

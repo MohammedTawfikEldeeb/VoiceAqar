@@ -26,6 +26,16 @@ const envSchema = z.object({
   VOICE_MODE: z.enum(['live', 'pipeline', 'both']).default('both'),
   GEMINI_LIVE_MODEL: z.string().default('gemini-3.1-flash-live-preview'),
   GEMINI_LIVE_VOICE: z.string().default('Puck'),
+  // --- Authentication & security ---
+  // If set, the /api/chat, /api/chat/end and related HTTP routes require
+  // this shared token in the `x-api-token` header. Leave empty in dev.
+  API_AUTH_TOKEN: z.string().optional(),
+  // If set, WebSocket routes require `?access_token=<value>` in the URL.
+  WSS_ACCESS_TOKEN: z.string().optional(),
+  // Twilio Auth Token used to verify incoming call webhook signatures.
+  TWILIO_AUTH_TOKEN: z.string().optional(),
+  // Session retention (hours) before idle chat/voice sessions are cleaned up.
+  SESSION_TTL_HOURS: z.coerce.number().default(6),
 });
 
 export const env = envSchema.parse(process.env);

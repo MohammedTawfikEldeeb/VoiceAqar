@@ -284,6 +284,9 @@
   </div>
 
   <script>
+    // Optional shared secret from ?api_token= (server must set API_AUTH_TOKEN)
+    const API_TOKEN = new URLSearchParams(location.search).get('api_token') || '';
+
     const chatMessages = document.getElementById('chatMessages');
     const messageInput = document.getElementById('messageInput');
     const sendBtn = document.getElementById('sendBtn');
@@ -315,6 +318,7 @@
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            ...(API_TOKEN ? { 'x-api-token': API_TOKEN } : {}),
           },
           body: JSON.stringify({
             message: text,
@@ -373,6 +377,7 @@
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              ...(API_TOKEN ? { 'x-api-token': API_TOKEN } : {}),
             },
             body: JSON.stringify({ sessionId, userId: currentUserId })
           });

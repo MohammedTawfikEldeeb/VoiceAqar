@@ -10,20 +10,21 @@ import { env } from '../config/env.js';
 
 export class GeminiLiveGateway {
   async handleConnection(ws: WebSocket, url: URL) {
-    const phone = url.searchParams.get('phone');
-    if (!phone) {
-      ws.send(JSON.stringify({ type: 'error', message: 'Phone number is required' }));
-      ws.close();
-      return;
-    }
+    try {
+      const phone = url.searchParams.get('phone');
+      if (!phone) {
+        ws.send(JSON.stringify({ type: 'error', message: 'Phone number is required' }));
+        ws.close();
+        return;
+      }
 
-    // --- User lookup/registration via centralized helper ---
-    const { userId, userName } = await getOrCreateUser(phone);
-    console.log(`👤 Gemini Live: Recognized user "${userName}" (${userId})`);
+      // --- User lookup/registration via centralized helper ---
+      const { userId, userName } = await getOrCreateUser(phone);
+      console.log(`👤 Gemini Live: Recognized user "${userName}" (${userId})`);
 
-    // --- Session + Memory ---
-    const sessionId = `live_${Date.now()}`;
-    await memoryManager.onCallStart(sessionId, userId);
+      // --- Session + Memory ---
+      const sessionId = `live_${Date.now()}`;
+      await memoryManager.onCallStart(sessionId, userId);
 
     // --- Manual Opik Session Tracing ---
     let trace: any = null;
@@ -312,6 +313,15 @@ export class GeminiLiveGateway {
     ws.on('error', (err) => {
       console.error('❌ WebSocket error:', err);
     });
+    } catch (err: any) {
+      console.error('❌ Gemini Live Gateway: Connection handler error:', err);
+      try {
+        if (ws.readyState === 1) {
+          ws.send(JSON.stringify({ type: 'error', message: err?.message || 'Internal error' }));
+        }
+      } catch {}
+      ws.close();
+    }
   }
 }
 

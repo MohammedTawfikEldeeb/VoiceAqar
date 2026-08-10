@@ -34,9 +34,42 @@ const twilioGateway = new TwilioGateway();
 // Attach WebSocket server
 const wss = new WebSocketServer({ server });
 
+// Simple in-memory WebSocket connection rate limiter for security (max 10 active connections per IP)
+const ipConnectionCounts = new Map<string, number>();
+
 wss.on('connection', (ws, req) => {
+  const ip = req.socket.remoteAddress || 'unknown-ip';
+  const currentCount = ipConnectionCounts.get(ip) || 0;
+
+  if (currentCount >= 15) {
+    console.warn(`⚠️ WebSocket connection rate limited for IP: ${ip}`);
+    ws.close(4029, 'Too many concurrent connections from this IP');
+    return;
+  }
+
+  // Track the active connection
+  ipConnectionCounts.set(ip, currentCount + 1);
+  ws.on('close', () => {
+    const count = ipConnectionCounts.get(ip) || 1;
+    if (count <= 1) {
+      ipConnectionCounts.delete(ip);
+    } else {
+      ipConnectionCounts.set(ip, count - 1);
+    }
+  });
+
   const url = new URL(req.url!, `http://${req.headers.host}`);
   const pathname = url.pathname;
+
+  // Enforce access token authorization on WebSockets if configured (dev bypass if empty)
+  if (env.WSS_ACCESS_TOKEN && pathname !== '/ws/twilio') {
+    const token = url.searchParams.get('access_token');
+    if (!token || token !== env.WSS_ACCESS_TOKEN) {
+      console.warn(`⚠️ WebSocket connection rejected for IP ${ip}: Invalid or missing access_token`);
+      ws.close(4003, 'Unauthorized access token required');
+      return;
+    }
+  }
 
   if (pathname === '/ws/voice-live' && ['live', 'both'].includes(env.VOICE_MODE)) {
     console.log('🎤 New Gemini Live voice connection');

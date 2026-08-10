@@ -394,6 +394,9 @@
 
   <script>
     // --- State & Globals ---
+    // Optional shared secret from ?access_token= (server must set WSS_ACCESS_TOKEN)
+    const WSS_TOKEN = new URLSearchParams(location.search).get('access_token') || '';
+
     let currentMode = 'live';
     let isLiveConnected = false;
     let ws = null;
@@ -572,7 +575,7 @@
       
       setStatus('connecting');
       const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-      ws = new WebSocket(`${protocol}//${location.host}/ws/voice-live?phone=${encodeURIComponent(phone)}`);
+      ws = new WebSocket(`${protocol}//${location.host}/ws/voice-live?phone=${encodeURIComponent(phone)}${WSS_TOKEN ? `&access_token=${encodeURIComponent(WSS_TOKEN)}` : ''}`);
       ws.binaryType = 'arraybuffer';
 
       ws.onopen = async () => {
@@ -698,7 +701,7 @@
         
         setStatus('connecting');
         const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        ws = new WebSocket(`${protocol}//${location.host}/ws/voice-pipeline?phone=${encodeURIComponent(phone)}`);
+        ws = new WebSocket(`${protocol}//${location.host}/ws/voice-pipeline?phone=${encodeURIComponent(phone)}${WSS_TOKEN ? `&access_token=${encodeURIComponent(WSS_TOKEN)}` : ''}`);
         ws.binaryType = 'arraybuffer';
 
         ws.onopen = () => {

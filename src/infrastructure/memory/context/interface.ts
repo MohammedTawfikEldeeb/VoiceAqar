@@ -4,6 +4,11 @@ export interface ContextEntry {
   timestamp: Date;
 }
 
+export interface SessionContext {
+  memorySummary: string;
+  toolResults: ContextEntry[];
+}
+
 export interface LiveApiContext {
   systemPrompt: string;
   memorySummary: string;
@@ -12,11 +17,15 @@ export interface LiveApiContext {
 }
 
 export interface IContextWindowService {
-  addToolResult(toolName: string, result: string): void;
-  getToolResults(): ContextEntry[];
-  injectMemorySummary(summary: string): void;
-  getContextForLiveApi(recentTurns?: Array<{ role: string; content: string }>): LiveApiContext;
-  reset(): void;
+  addToolResult(sessionId: string, toolName: string, result: string): void;
+  getToolResults(sessionId: string): ContextEntry[];
+  injectMemorySummary(sessionId: string, summary: string): void;
+  getContextForLiveApi(
+    sessionId: string,
+    recentTurns?: Array<{ role: string; content: string }>
+  ): LiveApiContext;
+  reset(sessionId: string): void;
+  cleanupExpiredIds(nowMs?: number): void;
 }
 
 export default IContextWindowService;
