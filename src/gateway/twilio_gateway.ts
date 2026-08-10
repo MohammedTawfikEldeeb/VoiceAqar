@@ -4,6 +4,7 @@ import { Opik } from 'opik';
 import { getSystemPrompt } from '../agent/prompt.js';
 import { propertyRetrievalTool } from '../tools/property_retrieval_tool.js';
 import { saveUserProfileTool } from '../tools/user_profile_tool.js';
+import { saveUserPreferencesTool } from '../tools/user_preferences_tool.js';
 import { memoryManager } from '../infrastructure/memory/index.js';
 import { getOrCreateUser } from '../utils/user_helper.js';
 import { decodeMuLaw, encodeMuLaw, resample8To16, resample24To8 } from '../utils/audio_helper.js';
@@ -21,6 +22,7 @@ export class TwilioGateway {
 
     const sessionId = `twilio_${Date.now()}`;
     await memoryManager.onCallStart(sessionId, userId);
+    const { systemPrompt } = await memoryManager.getAgentContext(sessionId, userId);
 
     // --- Manual Opik Session Tracing ---
     let trace: any = null;
@@ -40,6 +42,9 @@ export class TwilioGateway {
             sessionId,
             userId,
             userName,
+            userPreferences: systemPrompt.includes('User Preferences:')
+              ? systemPrompt.substring(systemPrompt.indexOf('User Preferences:'))
+              : 'None',
           },
         });
         console.log(` Opik: Started trace tracking for Twilio Live session ${sessionId}`);
@@ -52,12 +57,13 @@ export class TwilioGateway {
     const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
     let session: any;
     let streamSid = '';
+    let currentAgentResponse = '';
 
     try {
       session = await ai.live.connect({
         model: env.GEMINI_LIVE_MODEL,
         config: {
-          responseModalities: [Modality.AUDIO],
+          responseModalities: [Modality.AUDIO, Modality.TEXT],
           speechConfig: {
             voiceConfig: {
               prebuiltVoiceConfig: {
@@ -66,7 +72,7 @@ export class TwilioGateway {
             },
           },
           systemInstruction: {
-            parts: [{ text: getSystemPrompt() }],
+            parts: [{ text: systemPrompt }],
           },
           tools: [
             {
@@ -99,6 +105,23 @@ export class TwilioGateway {
                       phoneNumber: { type: Type.STRING, description: 'Phone number if provided' },
                     },
                     required: ['name'],
+                  },
+                },
+                {
+                  name: 'saveUserPreferences',
+                  description: 'Save or update user search preferences (specifically preferred property types and budget range) in the Neo4j knowledge graph. Use this tool immediately when the user specifies their budget or the type of property they are interested in.',
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      preferredPropertyTypes: {
+                        type: Type.ARRAY,
+                        items: { type: Type.STRING },
+                        description: "Array of preferred property types in Arabic (e.g., ['فيلا', 'شقة'])"
+                      },
+                      minPrice: { type: Type.NUMBER, description: 'Minimum budget in EGP' },
+                      maxPrice: { type: Type.NUMBER, description: 'Maximum budget in EGP' },
+                      currency: { type: Type.STRING, description: 'Currency (default: EGP)' },
+                    }
                   },
                 },
               ],
@@ -136,25 +159,36 @@ export class TwilioGateway {
                   }
                   // Text part
                   if (part.text) {
-                    console.log(`Twilio Gemini Response: "${part.text.substring(0, 100)}..."`);
-                    await memoryManager.onAgentResponse(sessionId, part.text);
+                    console.log(`🤖 Twilio Gemini Response chunk: "${part.text}"`);
+                    currentAgentResponse += part.text;
+                  }
+                }
+              }
 
-                    if (trace) {
-                      try {
-                        const agentSpan = trace.span({
-                          name: 'agent_response',
-                          type: 'llm',
-                          input: { context: 'Streaming response turn' },
-                        });
-                        agentSpan.update({
-                          output: { text: part.text },
-                        });
-                        agentSpan.end();
-                      } catch (opikErr) {
-                        console.error('Opik span logging failed:', opikErr);
-                      }
+              // --- Handle turn completion ---
+              if (message.serverContent?.turnComplete) {
+                console.log('✅ Twilio Turn complete');
+                if (currentAgentResponse) {
+                  console.log(`🤖 Full Twilio Gemini response: "${currentAgentResponse}"`);
+                  await memoryManager.onAgentResponse(sessionId, currentAgentResponse);
+
+                  // Log full agent response span in Opik
+                  if (trace) {
+                    try {
+                      const agentSpan = trace.span({
+                        name: 'agent_response',
+                        type: 'llm',
+                        input: { context: 'Live voice turn response' },
+                      });
+                      agentSpan.update({
+                        output: { text: currentAgentResponse },
+                      });
+                      agentSpan.end();
+                    } catch (opikErr) {
+                      console.error('⚠️ Opik span logging failed:', opikErr);
                     }
                   }
+                  currentAgentResponse = '';
                 }
               }
 
@@ -221,6 +255,20 @@ export class TwilioGateway {
                       await memoryManager.onToolResult(sessionId, 'saveUserProfile', resultString);
                     } catch (e: any) {
                       resultString = `Error saving profile: ${e.message}`;
+                    }
+                  } else if (call.name === 'saveUserPreferences') {
+                    try {
+                      const res = await saveUserPreferencesTool.invoke({
+                        userId: userId,
+                        preferredPropertyTypes: call.args.preferredPropertyTypes,
+                        minPrice: call.args.minPrice,
+                        maxPrice: call.args.maxPrice,
+                        currency: call.args.currency,
+                      }) as any;
+                      resultString = typeof res === 'string' ? res : (res.content as string || JSON.stringify(res));
+                      await memoryManager.onToolResult(sessionId, 'saveUserPreferences', resultString);
+                    } catch (e: any) {
+                      resultString = `Error saving preferences: ${e.message}`;
                     }
                   }
 

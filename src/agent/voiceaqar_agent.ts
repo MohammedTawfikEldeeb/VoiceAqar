@@ -3,6 +3,7 @@ import { PostgresSaver } from '@langchain/langgraph-checkpoint-postgres';
 import { env } from '../config/env.js';
 import { propertyRetrievalTool } from '../tools/property_retrieval_tool.js';
 import { saveUserProfileTool } from '../tools/user_profile_tool.js';
+import { saveUserPreferencesTool } from '../tools/user_preferences_tool.js';
 import { memoryManager } from '../infrastructure/memory/index.js';
 import { CustomChatModel } from '../infrastructure/llm/custom_chat_model.js';
 import { getAgentCallbacks } from '../utils/callbacks.js';
@@ -41,7 +42,7 @@ export async function initializeAgent() {
 
 // 3. Compile the React Agent with all tools and checkpointer
 const model = getChatModel();
-const tools = [propertyRetrievalTool, saveUserProfileTool];
+const tools = [propertyRetrievalTool, saveUserProfileTool, saveUserPreferencesTool];
 
 export const agent = createReactAgent({
   llm: model,
