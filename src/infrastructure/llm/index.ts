@@ -23,6 +23,6 @@ export class LlmServiceFactory {
   }
 }
 
-// Export default active LLM service based on env setting
-export const llmService = LlmServiceFactory.create(env.LLM_PROVIDER as 'gemini' | 'openrouter' | 'groq');
+// Export default active LLM service (Gemini only for Live mode)
+export const llmService = new GeminiLlmService();
 export default llmService;

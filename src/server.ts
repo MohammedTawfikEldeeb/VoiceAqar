@@ -5,7 +5,6 @@ import { WebSocketServer } from 'ws';
 import { env } from './config/env.js';
 import { initializeAgent } from './agent/voiceaqar_agent.js';
 import { GeminiLiveGateway } from './gateway/gemini_live_gateway.js';
-import { PipelineVoiceGateway } from './gateway/pipeline_voice_gateway.js';
 import { TwilioGateway } from './gateway/twilio_gateway.js';
 import chatRouter from './routes/chat.routes.js';
 import voiceRouter from './routes/voice.routes.js';
@@ -26,9 +25,8 @@ app.use(healthRouter);
 // --- HTTP + WebSocket Server ---
 const server = createServer(app);
 
-// Initialize voice gateways
+// Initialize voice gateways for Gemini Live
 const geminiLiveGateway = new GeminiLiveGateway();
-const pipelineGateway = new PipelineVoiceGateway();
 const twilioGateway = new TwilioGateway();
 
 // Attach WebSocket server
@@ -71,18 +69,16 @@ wss.on('connection', (ws, req) => {
     }
   }
 
-  if (pathname === '/ws/voice-live' && ['live', 'both'].includes(env.VOICE_MODE)) {
+  // Route incoming connection to Gemini Live gateways
+  if (pathname === '/ws/voice-live') {
     console.log('🎤 New Gemini Live voice connection');
     geminiLiveGateway.handleConnection(ws, url);
-  } else if (pathname === '/ws/voice-pipeline' && ['pipeline', 'both'].includes(env.VOICE_MODE)) {
-    console.log('🎤 New Pipeline voice connection');
-    pipelineGateway.handleConnection(ws, url);
   } else if (pathname === '/ws/twilio') {
-    console.log('🎤 New Twilio Stream voice connection');
+    console.log('🎤 New Gemini Twilio Stream voice connection');
     twilioGateway.handleConnection(ws, url);
   } else {
-    console.warn(`⚠️ Unknown WebSocket path: ${pathname}`);
-    ws.close(4004, 'Unknown path or mode disabled');
+    console.warn(`⚠️ Unknown or disabled WebSocket path: ${pathname}`);
+    ws.close(4004, 'Unknown path');
   }
 });
 
@@ -93,16 +89,11 @@ server.listen(PORT, async () => {
     console.log(` VoiceAqar server starting on port ${PORT}...`);
     console.log(' Initializing agent schemas and memory stores...');
     await initializeAgent();
-    console.log(`🎙️ Voice mode: ${env.VOICE_MODE}`);
-    if (['live', 'both'].includes(env.VOICE_MODE)) {
-      console.log(`  ⚡ Gemini Live: ws://localhost:${PORT}/ws/voice-live`);
-    }
-    if (['pipeline', 'both'].includes(env.VOICE_MODE)) {
-      console.log(`  🔄 Pipeline:    ws://localhost:${PORT}/ws/voice-pipeline`);
-    }
-    console.log(`  📞 Twilio Stream: ws://localhost:${PORT}/ws/twilio`);
-    console.log(`📝 Text chat:    http://localhost:${PORT}/chat`);
-    console.log(`🎤 Voice chat:   http://localhost:${PORT}/voice`);
+    console.log(`🎙️ Voice Provider: ${env.VOICE_PROVIDER.toUpperCase()}`);
+    console.log(`  ⚡ Web Voice Client: ws://localhost:${PORT}/ws/voice-live`);
+    console.log(`  📞 Twilio Stream:    ws://localhost:${PORT}/ws/twilio`);
+    console.log(`📝 Text chat:          http://localhost:${PORT}/chat`);
+    console.log(`🎤 Voice chat:         http://localhost:${PORT}/voice`);
     console.log(' Initialization complete. Server is ready to receive calls, voice streams, and chat messages!');
   } catch (err) {
     console.error(' Failed to initialize VoiceAqar backend:', err);

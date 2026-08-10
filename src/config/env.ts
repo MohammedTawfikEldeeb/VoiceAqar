@@ -12,20 +12,15 @@ const envSchema = z.object({
   NEO4J_USER: z.string().default('neo4j'),
   NEO4J_PASSWORD: z.string(),
   GEMINI_API_KEY: z.string(),
-  ELEVENLABS_API_KEY: z.string().optional(),
-  OPENROUTER_API_KEY: z.string().optional(),
-  GROQ_API_KEY: z.string().optional(),
   EMBEDDING_PROVIDER: z.enum(['local', 'gemini']).default('local'),
   VECTOR_DB_PROVIDER: z.enum(['qdrant']).default('qdrant'),
-  TTS_PROVIDER: z.enum(['gemini', 'elevenlabs']).default('gemini'),
-  STT_PROVIDER: z.enum(['gemini', 'elevenlabs', 'openrouter']).default('gemini'),
-  LLM_PROVIDER: z.enum(['gemini', 'openrouter', 'groq']).default('gemini'),
   OPIK_API_KEY: z.string().optional(),
   OPIK_WORKSPACE: z.string().optional(),
   OPIK_PROJECT_NAME: z.string().default('voiceaqar'),
-  VOICE_MODE: z.enum(['live', 'pipeline', 'both']).default('both'),
   GEMINI_LIVE_MODEL: z.string().default('gemini-3.1-flash-live-preview'),
   GEMINI_LIVE_VOICE: z.string().default('Puck'),
+  // --- Voice Provider Selection ---
+  VOICE_PROVIDER: z.enum(['gemini']).default('gemini'),
   // --- Authentication & security ---
   // If set, the /api/chat, /api/chat/end and related HTTP routes require
   // this shared token in the `x-api-token` header. Leave empty in dev.
