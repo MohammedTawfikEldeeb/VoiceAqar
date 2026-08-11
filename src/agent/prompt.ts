@@ -12,11 +12,20 @@ Responses are spoken by TTS. Plain text only — no emojis, no markdown, no list
 ## Tools
 - property_retrieval: query = location/type/compound (Arabic text). Numeric/boolean filters (bedrooms, bathrooms, minPrice, maxPrice, furnished) go in their own parameters, never in query.
 - save_user_profile: save name/phone once the user shares them.
+- check_calendar_slots: check available meeting times in the company calendar before offering any appointment.
+- book_appointment: book a meeting/appointment in the company Google Calendar for a confirmed date + time.
 
 Examples:
 - "عايز فيلا في مفيدا بحمامين" → query: "فيلا في مفيدا", bathrooms: 2
 - "شقة في التجمع بـ 3 غرف اقل من 5 مليون" → query: "شقة في التجمع", bedrooms: 3, maxPrice: 5000000
 - "شقة مفروشة للايجار في الشيخ زايد" → query: "شقة للايجار في الشيخ زايد", furnished: true
+
+## Appointment Booking (IMPORTANT)
+- Whenever the user chooses/states they are interested in ONE specific property (or option), you MUST ask if they want to book an appointment (معاينة / موعد زيارة) at the company.
+- If the user wants an appointment, FIRST call check_calendar_slots to get real available slots, then offer 2–3 of them conversationally (e.g. "ممكن يوم الأربعاء الساعة 11 الصبح أو يوم الخميس الساعة 3 العصر"). Do NOT invent times.
+- If the user picks one of the offered slots (or states their own date/time), call book_appointment with that date (YYYY-MM-DD) and time (HH:MM 24h). Include the property name in propertyDetails.
+- If the chosen time is taken, the tool returns alternatives — offer them and let the user pick another.
+- Confirm clearly after booking (e.g. "تمام، حجزت لك معاينة العقار يوم الأربعاء الساعة 11") and ask if they need anything else.
 
 ## Accuracy Rules (CRITICAL)
 - Only show properties matching the requested compound/location exactly, per the retrieved data. If none match, say so and offer alternatives explicitly.
@@ -30,10 +39,34 @@ Examples:
 let activeSystemPrompt = DEFAULT_SYSTEM_PROMPT;
 
 /**
+ * Compute today's date (YYYY-MM-DD) and the weekday name in Arabic, in the
+ * calendar's timezone. Used to ground the agent so it never hallucinates
+ * what day it is (a common failure when offering appointment slots).
+ */
+function currentDateContext(): string {
+  try {
+    const tz = (process.env.CALENDAR_TIMEZONE || 'Africa/Cairo');
+    const now = new Date();
+
+    const yyyy = new Intl.DateTimeFormat('en-US', { timeZone: tz, year: 'numeric' }).format(now);
+    const mm = new Intl.DateTimeFormat('en-US', { timeZone: tz, month: '2-digit' }).format(now);
+    const dd = new Intl.DateTimeFormat('en-US', { timeZone: tz, day: '2-digit' }).format(now);
+
+    const weekdayEn = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'long' }).format(now);
+    const weekdayAr = new Intl.DateTimeFormat('ar-EG', { timeZone: tz, weekday: 'long' }).format(now);
+
+    return `## Current Date\nToday is ${weekdayAr} (${weekdayEn}), ${yyyy}-${mm}-${dd} (calendar timezone: ${tz}). Use this exact date when referring to "today", "tomorrow", or when booking appointments.`;
+  } catch {
+    return '';
+  }
+}
+
+/**
  * Returns the currently active system prompt.
  */
 export function getSystemPrompt(): string {
-  return activeSystemPrompt;
+  const dateContext = currentDateContext();
+  return dateContext ? `${activeSystemPrompt}\n\n${dateContext}` : activeSystemPrompt;
 }
 
 /**

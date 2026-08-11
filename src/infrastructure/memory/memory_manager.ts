@@ -2,6 +2,7 @@ import { workingMemory } from './working/index.js';
 import { relationalMemory } from './relational/index.js';
 import { graphMemory } from './graph/index.js';
 import { contextWindow } from './context/index.js';
+import { getSystemPrompt } from '../../agent/prompt.js';
 import type { IWorkingMemoryService } from './working/interface.js';
 import type { IRelationalMemoryService } from './relational/interface.js';
 import type { IGraphMemoryService } from './graph/interface.js';
@@ -124,17 +125,23 @@ export class MemoryManager {
     const recentTurns = await this.working.getRecentTurns(sessionId, 10);
 
     // 2. If user is known, refresh context from graph memory
+    let memorySummary = '';
     if (userId) {
       const userContext = await this.graph.getUserContext(userId);
+      memorySummary = userContext;
       this.context.injectMemorySummary(sessionId, userContext);
     }
 
-    // 3. Build the system prompt with all injected context
-    const liveContext = this.context.getContextForLiveApi(sessionId, recentTurns);
+    // 3. Build the system prompt from the active real prompt (prompt.ts)
+    //    enriched with the graph memory summary (user preferences/budget/history).
+    const basePrompt = getSystemPrompt();
+    const systemPrompt = memorySummary && memorySummary.trim() !== 'No user context available.'
+      ? `${basePrompt}\n\n## User Context (from memory)\n${memorySummary}`
+      : basePrompt;
 
     return {
-      systemPrompt: liveContext.systemPrompt,
-      recentTurns: liveContext.recentTurns,
+      systemPrompt,
+      recentTurns,
     };
   }
 

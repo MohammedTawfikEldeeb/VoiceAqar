@@ -21,6 +21,15 @@ const envSchema = z.object({
   GEMINI_LIVE_VOICE: z.string().default('Puck'),
   // --- Voice Provider Selection ---
   VOICE_PROVIDER: z.enum(['gemini']).default('gemini'),
+  // --- Google Calendar (appointment booking) ---
+  GOOGLE_CALENDAR_SERVICE_ACCOUNT_EMAIL: z.string().optional(),
+  GOOGLE_CALENDAR_PRIVATE_KEY: z.string().optional(),
+  GOOGLE_CALENDAR_ID: z.string().optional(),
+  CALENDAR_TIMEZONE: z.string().default('Africa/Cairo'),
+  CALENDAR_WORK_START: z.string().default('10:00'),
+  CALENDAR_WORK_END: z.string().default('17:00'),
+  CALENDAR_APPOINTMENT_DURATION_MIN: z.coerce.number().default(30),
+  CALENDAR_SLOTS_PER_OFFER: z.coerce.number().default(3),
   // --- Authentication & security ---
   // If set, the /api/chat, /api/chat/end and related HTTP routes require
   // this shared token in the `x-api-token` header. Leave empty in dev.
