@@ -117,7 +117,7 @@ export class MemoryManager {
    * Assemble the full agent context from all memory layers.
    * Returns the system prompt enriched with user preferences and recent conversation.
    */
-  async getAgentContext(sessionId: string, userId?: string): Promise<{
+  async getAgentContext(sessionId: string, userId?: string, personalitySection?: string): Promise<{
     systemPrompt: string;
     recentTurns: Array<{ role: string; content: string }>;
   }> {
@@ -134,7 +134,7 @@ export class MemoryManager {
 
     // 3. Build the system prompt from the active real prompt (prompt.ts)
     //    enriched with the graph memory summary (user preferences/budget/history).
-    const basePrompt = getSystemPrompt();
+    const basePrompt = getSystemPrompt(personalitySection);
     const systemPrompt = memorySummary && memorySummary.trim() !== 'No user context available.'
       ? `${basePrompt}\n\n## User Context (from memory)\n${memorySummary}`
       : basePrompt;

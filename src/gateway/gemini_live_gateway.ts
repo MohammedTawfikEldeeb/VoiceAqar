@@ -1,6 +1,7 @@
 import type { WebSocket } from 'ws';
 import { memoryManager } from '../infrastructure/memory/index.js';
 import { getOrCreateUser } from '../utils/user_helper.js';
+import { pickRandomPersonality } from '../config/personalities.js';
 import { VoiceSession } from './voice_session.js';
 
 export class GeminiLiveGateway {
@@ -20,7 +21,12 @@ export class GeminiLiveGateway {
       // --- Session + Memory ---
       const sessionId = `live_${Date.now()}`;
       await memoryManager.onCallStart(sessionId, userId);
-      const { systemPrompt } = await memoryManager.getAgentContext(sessionId, userId);
+
+      // --- Random personality per call (voice + persona) ---
+      const personality = pickRandomPersonality();
+      console.log(`🎭 Gemini Live: Assigned personality "${personality.name}" (voice: ${personality.voice})`);
+
+      const { systemPrompt } = await memoryManager.getAgentContext(sessionId, userId, personality.personality);
 
       // --- Shared voice session (connect + tools + memory + Opik) ---
       const voice = new VoiceSession({
@@ -29,6 +35,7 @@ export class GeminiLiveGateway {
         userName,
         phone,
         systemPrompt,
+        voiceName: personality.voice,
         traceName: 'Gemini Live Session',
         handlers: {
           onOpen: () => {

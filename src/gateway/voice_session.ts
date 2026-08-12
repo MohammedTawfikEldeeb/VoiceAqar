@@ -43,6 +43,7 @@ export class VoiceSession {
       userName: string;
       phone: string;
       systemPrompt: string;
+      voiceName?: string;
       traceName: string;
       handlers: VoiceSessionHandlers;
     }
@@ -179,7 +180,7 @@ export class VoiceSession {
         speechConfig: {
           voiceConfig: {
             prebuiltVoiceConfig: {
-              voiceName: env.GEMINI_LIVE_VOICE,
+              voiceName: this.opts.voiceName || env.GEMINI_LIVE_VOICE,
             },
           },
         },

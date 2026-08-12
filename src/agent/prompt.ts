@@ -63,10 +63,15 @@ function currentDateContext(): string {
 
 /**
  * Returns the currently active system prompt.
+ * If `personalitySection` is provided it replaces the "## Personality" block
+ * (used by the voice gateways to run a random persona per call).
  */
-export function getSystemPrompt(): string {
+export function getSystemPrompt(personalitySection?: string): string {
+  const base = personalitySection
+    ? activeSystemPrompt.replace(/## Personality\n[\s\S]*?(?=\n## )/, `## Personality\n${personalitySection}\n`)
+    : activeSystemPrompt;
   const dateContext = currentDateContext();
-  return dateContext ? `${activeSystemPrompt}\n\n${dateContext}` : activeSystemPrompt;
+  return dateContext ? `${base}\n\n${dateContext}` : base;
 }
 
 /**

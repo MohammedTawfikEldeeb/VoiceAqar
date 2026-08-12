@@ -1,6 +1,7 @@
 import type { WebSocket } from 'ws';
 import { memoryManager } from '../infrastructure/memory/index.js';
 import { getOrCreateUser } from '../utils/user_helper.js';
+import { pickRandomPersonality } from '../config/personalities.js';
 import { decodeMuLaw, encodeMuLaw, resample8To16, resample24To8 } from '../utils/audio_helper.js';
 import { VoiceSession } from './voice_session.js';
 
@@ -16,7 +17,12 @@ export class TwilioGateway {
 
       const sessionId = `twilio_${Date.now()}`;
       await memoryManager.onCallStart(sessionId, userId);
-      const { systemPrompt } = await memoryManager.getAgentContext(sessionId, userId);
+
+      // --- Random personality per call (voice + persona) ---
+      const personality = pickRandomPersonality();
+      console.log(`🎭 Twilio: Assigned personality "${personality.name}" (voice: ${personality.voice})`);
+
+      const { systemPrompt } = await memoryManager.getAgentContext(sessionId, userId, personality.personality);
 
       let streamSid = '';
 
@@ -27,6 +33,7 @@ export class TwilioGateway {
         userName,
         phone,
         systemPrompt,
+        voiceName: personality.voice,
         traceName: 'Twilio Live Session',
         handlers: {
           onAudio: (audioBuffer24k) => {
