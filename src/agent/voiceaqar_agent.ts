@@ -3,6 +3,7 @@ import { PostgresSaver } from '@langchain/langgraph-checkpoint-postgres';
 import { env } from '../config/env.js';
 import { agentTools } from '../tools/registry.js';
 import { memoryManager } from '../infrastructure/memory/index.js';
+import { embeddingService } from '../infrastructure/embeddings/index.js';
 import { CustomChatModel } from '../infrastructure/llm/custom_chat_model.js';
 import { getAgentCallbacks } from '../utils/callbacks.js';
 import { getSystemPrompt, syncPromptWithOpik } from './prompt.js';
@@ -31,6 +32,12 @@ export async function initializeAgent() {
 
   // Sync latest system prompt from Opik Prompt Library
   await syncPromptWithOpik();
+
+  // Preload the embedding model in the background so the first
+  // property_retrieval query is not slow, without blocking server readiness.
+  embeddingService.warmup().catch((err) => {
+    console.warn(' Embedding model warmup failed (will load lazily on first query):', err);
+  });
 
   // Initialize all memory layers (Neo4j constraints, etc.)
   await memoryManager.initialize();

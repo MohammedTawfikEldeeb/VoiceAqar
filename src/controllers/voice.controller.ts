@@ -25,12 +25,12 @@ export function handleTwilioIncomingCall(req: Request, res: Response) {
   const formBody = req.body || {};
 
   if (!isValidTwilioSignature(signature, requestUrl, formBody)) {
-    console.warn(`🔒 Twilio webhook signature validation failed for call from ${callerPhone}`);
+    console.warn(` Twilio webhook signature validation failed for call from ${callerPhone}`);
     res.status(403).type('text/plain').send('Invalid Twilio signature');
     return;
   }
 
-  console.log(`📞 Twilio: Incoming call from ${callerPhone}`);
+  console.log(` Twilio: Incoming call from ${callerPhone}`);
 
   // Optionally authenticate the media-stream WebSocket with the shared token
   const tokenParam = env.WSS_ACCESS_TOKEN

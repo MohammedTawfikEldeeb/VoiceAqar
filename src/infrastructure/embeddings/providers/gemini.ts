@@ -18,6 +18,11 @@ export class GeminiEmbeddingService implements IEmbeddingService {
     return this.dimension;
   }
 
+  async warmup(): Promise<void> {
+    // API-based embeddings have no local cold start to preload.
+    return;
+  }
+
   async generateEmbedding(text: string, isQuery: boolean = false): Promise<number[]> {
     const response = await this.ai.models.embedContent({
       model: this.modelName,

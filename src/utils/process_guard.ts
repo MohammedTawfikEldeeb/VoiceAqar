@@ -4,11 +4,11 @@
  */
 export function installProcessGuards(): void {
   process.on('unhandledRejection', (reason) => {
-    console.error('⚠️ Unhandled promise rejection (kept serving):', reason);
+    console.error(' Unhandled promise rejection (kept serving):', reason);
   });
 
   process.on('uncaughtException', (err) => {
-    console.error('❌ Uncaught exception:', err);
+    console.error(' Uncaught exception:', err);
     console.error('Shutting down to avoid corrupt state.');
     process.exit(1);
   });

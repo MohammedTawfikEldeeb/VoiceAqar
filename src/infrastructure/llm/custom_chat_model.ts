@@ -84,7 +84,7 @@ export class CustomChatModel extends BaseChatModel {
         try {
           args = JSON.parse(tc.function.arguments);
         } catch (parseErr) {
-          console.warn('⚠️ CustomChatModel: malformed tool arguments, treated as empty object:', parseErr);
+          console.warn(' CustomChatModel: malformed tool arguments, treated as empty object:', parseErr);
         }
         toolCalls.push({
           id: tc.id,
@@ -130,7 +130,7 @@ export class CustomChatModel extends BaseChatModel {
           delete (jsonSchema as any).$schema;
           parameters = jsonSchema;
         } catch (e) {
-          console.error(`⚠️ Failed to convert Zod schema for tool ${tool.name}:`, e);
+          console.error(` Failed to convert Zod schema for tool ${tool.name}:`, e);
           parameters = { type: 'object', properties: {} };
         }
       }

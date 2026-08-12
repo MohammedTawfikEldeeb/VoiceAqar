@@ -8,19 +8,19 @@ import { VoiceSession } from './voice_session.js';
 export class TwilioGateway {
   async handleConnection(ws: WebSocket, url: URL) {
     const phone = url.searchParams.get('phone') || 'unknown_twilio';
-    console.log(`📞 Twilio Gateway: New call stream connection for phone ${phone}`);
+    console.log(` Twilio Gateway: New call stream connection for phone ${phone}`);
 
     try {
       // --- User lookup/registration via centralized helper ---
       const { userId, userName } = await getOrCreateUser(phone);
-      console.log(`👤 Twilio: Recognized user "${userName}" (${userId})`);
+      console.log(` Twilio: Recognized user "${userName}" (${userId})`);
 
       const sessionId = `twilio_${Date.now()}`;
       await memoryManager.onCallStart(sessionId, userId);
 
       // --- Random personality per call (voice + persona) ---
       const personality = pickRandomPersonality();
-      console.log(`🎭 Twilio: Assigned personality "${personality.name}" (voice: ${personality.voice})`);
+      console.log(` Twilio: Assigned personality "${personality.name}" (voice: ${personality.voice})`);
 
       const { systemPrompt } = await memoryManager.getAgentContext(sessionId, userId, personality.personality);
 
@@ -62,7 +62,7 @@ export class TwilioGateway {
 
           if (data.event === 'start') {
             streamSid = data.streamSid;
-            console.log(`🎬 Twilio: Audio stream started with streamSid: ${streamSid}`);
+            console.log(` Twilio: Audio stream started with streamSid: ${streamSid}`);
           } else if (data.event === 'media') {
             // Decode: 8kHz Mulaw -> 8kHz PCM -> 16kHz PCM for Gemini Live
             const mulawBuffer = Buffer.from(data.media.payload, 'base64');
@@ -73,13 +73,13 @@ export class TwilioGateway {
             console.log('Twilio: Audio stream stopped');
           }
         } catch (err) {
-          console.error('❌ Twilio Gateway: Error processing Twilio message:', err);
+          console.error(' Twilio Gateway: Error processing Twilio message:', err);
         }
       });
 
       // --- Cleanup on disconnect ---
       ws.on('close', async () => {
-        console.log('🔴 Twilio client disconnected');
+        console.log(' Twilio client disconnected');
         await voice.close();
         try {
           await memoryManager.onCallEnd(sessionId, userId);
@@ -89,10 +89,10 @@ export class TwilioGateway {
       });
 
       ws.on('error', (err) => {
-        console.error('❌ Twilio WebSocket error:', err);
+        console.error(' Twilio WebSocket error:', err);
       });
     } catch (err: any) {
-      console.error('❌ Twilio Gateway: Connection handler error:', err);
+      console.error(' Twilio Gateway: Connection handler error:', err);
       try {
         if (ws.readyState === 1) {
           ws.send(JSON.stringify({ type: 'error', message: err?.message || 'Internal error' }));

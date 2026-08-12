@@ -145,7 +145,7 @@ export async function executeToolCall(toolName: string, args: any, ctx: ToolCall
     await memoryManager.onToolResult(ctx.sessionId, toolName, resultString);
     return resultString;
   } catch (e: any) {
-    console.error(`❌ Tool "${toolName}" failed:`, e);
+    console.error(` Tool "${toolName}" failed:`, e);
     return `Error in ${toolName}: ${e.message}`;
   }
 }

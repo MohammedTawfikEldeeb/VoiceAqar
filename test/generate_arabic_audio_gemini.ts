@@ -40,7 +40,7 @@ function pcmToWav(pcmBuffer: Buffer, sampleRate: number = 24000): Buffer {
 }
 
 async function debugGeminiTts() {
-  console.log('🎙️ Generating Arabic audio using Gemini 2.5 Flash TTS...');
+  console.log(' Generating Arabic audio using Gemini 2.5 Flash TTS...');
 
   try {
     const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
@@ -67,7 +67,7 @@ async function debugGeminiTts() {
 
     if (part.inlineData) {
       const mimeType = part.inlineData.mimeType;
-      console.log(`\n🎉 Success! MimeType returned by Gemini: "${mimeType}"`);
+      console.log(`\n Success! MimeType returned by Gemini: "${mimeType}"`);
       
       let rawBuffer = Buffer.from(part.inlineData.data, 'base64');
       let finalBuffer = rawBuffer;
@@ -92,15 +92,15 @@ async function debugGeminiTts() {
       const outputPath = path.resolve(filename);
       fs.writeFileSync(outputPath, finalBuffer);
 
-      console.log(`\n🎉 Audio file saved to:`);
-      console.log(`👉 ${outputPath}`);
+      console.log(`\n Audio file saved to:`);
+      console.log(` ${outputPath}`);
       console.log(`\nYou can play this file directly using VLC, Windows Media Player, or any browser!`);
     } else {
       console.log('Part did not contain inlineData.', part);
     }
 
   } catch (error: any) {
-    console.error('❌ Generation failed:');
+    console.error(' Generation failed:');
     console.error(error.message || error);
   }
 }

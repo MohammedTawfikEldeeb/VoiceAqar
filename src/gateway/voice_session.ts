@@ -70,9 +70,9 @@ export class VoiceSession {
             : 'None',
         },
       });
-      console.log(`📝 Opik: Started ${this.opts.traceName} trace for session ${this.opts.sessionId}`);
+      console.log(` Opik: Started ${this.opts.traceName} trace for session ${this.opts.sessionId}`);
     } catch (err) {
-      console.error('⚠️ Failed to initialize Opik trace:', err);
+      console.error(' Failed to initialize Opik trace:', err);
     }
   }
 
@@ -95,7 +95,7 @@ export class VoiceSession {
       // --- Turn complete: flush the accumulated agent response ---
       if (message.serverContent?.turnComplete) {
         if (this.currentAgentResponse) {
-          console.log(`🤖 Full agent response: "${this.currentAgentResponse}"`);
+          console.log(` Full agent response: "${this.currentAgentResponse}"`);
           await memoryManager.onAgentResponse(this.opts.sessionId, this.currentAgentResponse);
           if (this.trace) {
             try {
@@ -103,7 +103,7 @@ export class VoiceSession {
               span.update({ output: { text: this.currentAgentResponse } });
               span.end();
             } catch (opikErr) {
-              console.error('⚠️ Opik span logging failed:', opikErr);
+              console.error(' Opik span logging failed:', opikErr);
             }
           }
           this.opts.handlers.onTurnComplete?.(this.currentAgentResponse);
@@ -115,14 +115,14 @@ export class VoiceSession {
       if (message.serverContent?.clientContent?.parts) {
         for (const part of message.serverContent.clientContent.parts) {
           if (part.text) {
-            console.log(`👤 User transcript: "${part.text}"`);
+            console.log(` User transcript: "${part.text}"`);
             await memoryManager.onUserMessage(this.opts.sessionId, part.text, this.opts.userId);
             if (this.trace) {
               try {
                 const span = this.trace.span({ name: 'user_speech', type: 'general', input: { text: part.text } });
                 span.end();
               } catch (opikErr) {
-                console.error('⚠️ Opik span logging failed:', opikErr);
+                console.error(' Opik span logging failed:', opikErr);
               }
             }
           }
@@ -132,13 +132,13 @@ export class VoiceSession {
       // --- Tool calls: dispatch through the shared registry ---
       if (message.toolCall) {
         for (const call of message.toolCall.functionCalls) {
-          console.log(`🔧 Tool call: ${call.name}(${JSON.stringify(call.args)})`);
+          console.log(` Tool call: ${call.name}(${JSON.stringify(call.args)})`);
           let toolSpan: any = null;
           if (this.trace) {
             try {
               toolSpan = this.trace.span({ name: `tool:${call.name}`, type: 'tool', input: call.args });
             } catch (opikErr) {
-              console.error('⚠️ Opik span logging failed:', opikErr);
+              console.error(' Opik span logging failed:', opikErr);
             }
           }
 
@@ -153,7 +153,7 @@ export class VoiceSession {
               toolSpan.update({ output: { result: resultString } });
               toolSpan.end();
             } catch (opikErr) {
-              console.error('⚠️ Opik span update failed:', opikErr);
+              console.error(' Opik span update failed:', opikErr);
             }
           }
 
@@ -163,7 +163,7 @@ export class VoiceSession {
         }
       }
     } catch (err: any) {
-      console.error('❌ Error processing session message:', err);
+      console.error(' Error processing session message:', err);
     }
   }
 
@@ -195,16 +195,16 @@ export class VoiceSession {
       },
       callbacks: {
         onopen: () => {
-          console.log('⚡ Connected to Gemini Live API');
+          console.log(' Connected to Gemini Live API');
           this.opts.handlers.onOpen?.();
         },
         onmessage: (message: any) => this.handleMessage(message),
         onerror: (err: any) => {
-          console.error('❌ Gemini Live API error:', err?.message || err);
+          console.error(' Gemini Live API error:', err?.message || err);
           this.opts.handlers.onError?.(err?.message || 'Gemini Live error');
         },
         onclose: (e: any) => {
-          console.log('🔴 Gemini Live session closed:', e?.reason || 'unknown');
+          console.log(' Gemini Live session closed:', e?.reason || 'unknown');
           this.opts.handlers.onClose?.(e?.reason || 'unknown');
         },
       },
@@ -234,9 +234,9 @@ export class VoiceSession {
         this.trace.end();
         const opik = new Opik();
         await opik.flush();
-        console.log(`✅ Opik: Flushed ${this.opts.traceName} trace for session ${this.opts.sessionId}`);
+        console.log(` Opik: Flushed ${this.opts.traceName} trace for session ${this.opts.sessionId}`);
       } catch (opikErr) {
-        console.error('⚠️ Opik trace flush failed:', opikErr);
+        console.error(' Opik trace flush failed:', opikErr);
       }
     }
   }

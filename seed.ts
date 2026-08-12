@@ -65,21 +65,21 @@ function generatePropertiesData() {
 // 2. Main Postgres Seeding Function
 async function seedPostgres() {
   try {
-    console.log('🚀 Starting PostgreSQL Seeding via Drizzle...');
+    console.log(' Starting PostgreSQL Seeding via Drizzle...');
 
     const seedProperties = generatePropertiesData();
 
-    console.log('🧹 Clearing old data from properties table...');
+    console.log(' Clearing old data from properties table...');
     await db.delete(properties);
 
-    console.log('💾 Inserting 50 properties into PostgreSQL...');
+    console.log(' Inserting 50 properties into PostgreSQL...');
     await db.insert(properties).values(seedProperties);
 
-    console.log('🎉 Successfully seeded 50 properties into PostgreSQL!');
+    console.log(' Successfully seeded 50 properties into PostgreSQL!');
     process.exit(0);
 
   } catch (error) {
-    console.error('❌ Error seeding PostgreSQL:', error);
+    console.error(' Error seeding PostgreSQL:', error);
     process.exit(1);
   }
 }

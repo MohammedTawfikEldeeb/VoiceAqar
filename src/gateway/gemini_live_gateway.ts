@@ -16,7 +16,7 @@ export class GeminiLiveGateway {
     try {
       // --- User lookup/registration via centralized helper ---
       const { userId, userName } = await getOrCreateUser(phone);
-      console.log(`👤 Gemini Live: Recognized user "${userName}" (${userId})`);
+      console.log(` Gemini Live: Recognized user "${userName}" (${userId})`);
 
       // --- Session + Memory ---
       const sessionId = `live_${Date.now()}`;
@@ -24,7 +24,7 @@ export class GeminiLiveGateway {
 
       // --- Random personality per call (voice + persona) ---
       const personality = pickRandomPersonality();
-      console.log(`🎭 Gemini Live: Assigned personality "${personality.name}" (voice: ${personality.voice})`);
+      console.log(` Gemini Live: Assigned personality "${personality.name}" (voice: ${personality.voice})`);
 
       const { systemPrompt } = await memoryManager.getAgentContext(sessionId, userId, personality.personality);
 
@@ -61,13 +61,13 @@ export class GeminiLiveGateway {
         try {
           voice.sendAudioInput(Buffer.from(data).toString('base64'));
         } catch (err) {
-          console.error('❌ Error forwarding audio to Gemini:', err);
+          console.error(' Error forwarding audio to Gemini:', err);
         }
       });
 
       // --- Cleanup on disconnect ---
       ws.on('close', async () => {
-        console.log('🔴 Gemini Live client disconnected');
+        console.log(' Gemini Live client disconnected');
         await voice.close();
         try {
           await memoryManager.onCallEnd(sessionId, userId);
@@ -77,10 +77,10 @@ export class GeminiLiveGateway {
       });
 
       ws.on('error', (err) => {
-        console.error('❌ WebSocket error:', err);
+        console.error(' WebSocket error:', err);
       });
     } catch (err: any) {
-      console.error('❌ Gemini Live Gateway: Connection handler error:', err);
+      console.error(' Gemini Live Gateway: Connection handler error:', err);
       try {
         if (ws.readyState === 1) {
           ws.send(JSON.stringify({ type: 'error', message: err?.message || 'Internal error' }));

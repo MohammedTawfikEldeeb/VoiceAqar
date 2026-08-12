@@ -30,7 +30,7 @@ export const saveUserPreferencesTool = tool(
 
       return summary;
     } catch (error) {
-      console.error('❌ Error saving user preferences to Neo4j:', error);
+      console.error(' Error saving user preferences to Neo4j:', error);
       return `Failed to save user preferences: ${error instanceof Error ? error.message : String(error)}`;
     }
   },

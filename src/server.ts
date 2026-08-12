@@ -40,7 +40,7 @@ wss.on('connection', (ws, req) => {
   const currentCount = ipConnectionCounts.get(ip) || 0;
 
   if (currentCount >= 15) {
-    console.warn(`⚠️ WebSocket connection rate limited for IP: ${ip}`);
+    console.warn(` WebSocket connection rate limited for IP: ${ip}`);
     ws.close(4029, 'Too many concurrent connections from this IP');
     return;
   }
@@ -63,7 +63,7 @@ wss.on('connection', (ws, req) => {
   if (env.WSS_ACCESS_TOKEN && pathname !== '/ws/twilio') {
     const token = url.searchParams.get('access_token');
     if (!token || token !== env.WSS_ACCESS_TOKEN) {
-      console.warn(`⚠️ WebSocket connection rejected for IP ${ip}: Invalid or missing access_token`);
+      console.warn(` WebSocket connection rejected for IP ${ip}: Invalid or missing access_token`);
       ws.close(4003, 'Unauthorized access token required');
       return;
     }
@@ -71,13 +71,13 @@ wss.on('connection', (ws, req) => {
 
   // Route incoming connection to Gemini Live gateways
   if (pathname === '/ws/voice-live') {
-    console.log('🎤 New Gemini Live voice connection');
+    console.log(' New Gemini Live voice connection');
     geminiLiveGateway.handleConnection(ws, url);
   } else if (pathname === '/ws/twilio') {
-    console.log('🎤 New Gemini Twilio Stream voice connection');
+    console.log(' New Gemini Twilio Stream voice connection');
     twilioGateway.handleConnection(ws, url);
   } else {
-    console.warn(`⚠️ Unknown or disabled WebSocket path: ${pathname}`);
+    console.warn(` Unknown or disabled WebSocket path: ${pathname}`);
     ws.close(4004, 'Unknown path');
   }
 });
@@ -89,11 +89,11 @@ server.listen(PORT, async () => {
     console.log(` VoiceAqar server starting on port ${PORT}...`);
     console.log(' Initializing agent schemas and memory stores...');
     await initializeAgent();
-    console.log(`🎙️ Voice Provider: ${env.VOICE_PROVIDER.toUpperCase()}`);
-    console.log(`  ⚡ Web Voice Client: ws://localhost:${PORT}/ws/voice-live`);
-    console.log(`  📞 Twilio Stream:    ws://localhost:${PORT}/ws/twilio`);
-    console.log(`📝 Text chat:          http://localhost:${PORT}/chat`);
-    console.log(`🎤 Voice chat:         http://localhost:${PORT}/voice`);
+    console.log(` Voice Provider: ${env.VOICE_PROVIDER.toUpperCase()}`);
+    console.log(`   Web Voice Client: ws://localhost:${PORT}/ws/voice-live`);
+    console.log(`   Twilio Stream:    ws://localhost:${PORT}/ws/twilio`);
+    console.log(` Text chat:          http://localhost:${PORT}/chat`);
+    console.log(` Voice chat:         http://localhost:${PORT}/voice`);
     console.log(' Initialization complete. Server is ready to receive calls, voice streams, and chat messages!');
   } catch (err) {
     console.error(' Failed to initialize VoiceAqar backend:', err);

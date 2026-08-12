@@ -24,6 +24,10 @@ export class HuggingFaceLocalEmbeddingService implements IEmbeddingService {
     return this.dimension;
   }
 
+  async warmup(): Promise<void> {
+    await this.getExtractor();
+  }
+
   async generateEmbedding(text: string, isQuery: boolean = false): Promise<number[]> {
     const extractor = await this.getExtractor();
     

@@ -1,5 +1,11 @@
 export interface IEmbeddingService {
   /**
+   * Preload model weights / warm up the service so the first real query
+   * does not pay the cold-start cost.
+   */
+  warmup(): Promise<void>;
+
+  /**
    * Generate an embedding vector for a single string.
    * @param text The input string to embed.
    * @param isQuery Boolean specifying if the string is a search query (relevant for models like E5).

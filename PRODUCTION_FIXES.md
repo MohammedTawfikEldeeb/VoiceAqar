@@ -9,7 +9,7 @@ the VoiceAqar codebase and exactly what was changed to fix it. Each entry lists 
 
 ---
 
-## 1. 🚨 Deployment ran a stale binary — `npm start` served the wrong app
+## 1.  Deployment ran a stale binary — `npm start` served the wrong app
 
 **Problem**
 - `package.json` `main` and the `start` script both point to `dist/server.js`.
@@ -30,7 +30,7 @@ the VoiceAqar codebase and exactly what was changed to fix it. Each entry lists 
 
 ---
 
-## 2. 🚨 Zero authentication — paid APIs were wide open
+## 2.  Zero authentication — paid APIs were wide open
 
 **Problem**
 - `/api/chat` created users and called the paid LLM with no auth, no rate limit.
@@ -61,7 +61,7 @@ the VoiceAqar codebase and exactly what was changed to fix it. Each entry lists 
 
 ---
 
-## 3. 🚨 A single DB/Redis failure crashed the whole server
+## 3.  A single DB/Redis failure crashed the whole server
 
 **Problem**
 - `wss.on('connection')` called `geminiLiveGateway.handleConnection()` and
@@ -85,7 +85,7 @@ the VoiceAqar codebase and exactly what was changed to fix it. Each entry lists 
 
 ---
 
-## 4. 🟠 Memory context leaked across concurrent calls
+## 4.  Memory context leaked across concurrent calls
 
 **Problem**
 - `ContextWindowService` (used by `MemoryManager`) was a **process-global singleton** storing a
@@ -107,7 +107,7 @@ the VoiceAqar codebase and exactly what was changed to fix it. Each entry lists 
 
 ---
 
-## 5. 🟠 Startup wasn't fail-fast; `/health` lied
+## 5.  Startup wasn't fail-fast; `/health` lied
 
 **Problem**
 - `initializeAgent()` (checkpointer DB setup + Neo4j constraint creation) runs inside the
@@ -127,7 +127,7 @@ the VoiceAqar codebase and exactly what was changed to fix it. Each entry lists 
 
 ---
 
-## 6. 🟠 Knowledge-graph memory never reached the model
+## 6.  Knowledge-graph memory never reached the model
 
 **Problem**
 - `memoryManager.getAgentContext()` assembled user context + recent turns, but no gateway used it.
@@ -145,7 +145,7 @@ the VoiceAqar codebase and exactly what was changed to fix it. Each entry lists 
 
 ---
 
-## 7. 🟠 Concurrent first-time users collided on the unique phone constraint
+## 7.  Concurrent first-time users collided on the unique phone constraint
 
 **Problem**
 - `getOrCreateUser()` (and the chat controller's inline logic) did select-then-insert.
@@ -164,7 +164,7 @@ the VoiceAqar codebase and exactly what was changed to fix it. Each entry lists 
 
 ---
 
-## 8. 🟠 Unbounded session state + no graceful shutdown
+## 8.  Unbounded session state + no graceful shutdown
 
 **Problem**
 - Chat sessions lived forever in a `Set<string>` (a memory leak when clients never called
@@ -183,7 +183,7 @@ the VoiceAqar codebase and exactly what was changed to fix it. Each entry lists 
 
 ---
 
-## 9. 🟡 Malformed tool arguments crashed the LLM call
+## 9.  Malformed tool arguments crashed the LLM call
 
 **Problem**
 - `CustomChatModel._generate()` did `JSON.parse(tc.function.arguments)` unguarded. A provider
@@ -196,7 +196,7 @@ the VoiceAqar codebase and exactly what was changed to fix it. Each entry lists 
 
 ---
 
-## 10. 🟡 Environment configuration was undocumented/incomplete
+## 10.  Environment configuration was undocumented/incomplete
 
 **Problem**
 - `.env.example` listed only 7 variables. The schema in `src/config/env.ts` **requires**
@@ -213,7 +213,7 @@ the VoiceAqar codebase and exactly what was changed to fix it. Each entry lists 
 
 ---
 
-## 11. 🟡 Docker services weren't production-safe
+## 11.  Docker services weren't production-safe
 
 **Problem**
 - `qdrant:latest` unpinned → a surprise upgrade could change behavior.
@@ -230,7 +230,7 @@ the VoiceAqar codebase and exactly what was changed to fix it. Each entry lists 
 
 ---
 
-## 12. 🧹 Cleanup / hygiene
+## 12.  Cleanup / hygiene
 
 - Removed the dead no-op route `POST /api/api/chat/end` from `src/routes/chat.routes.ts`.
 - Added `express.json({ limit: '1mb' })` to avoid unbounded JSON bodies.
@@ -243,10 +243,10 @@ the VoiceAqar codebase and exactly what was changed to fix it. Each entry lists 
 
 | Check | Result |
 |---|---|
-| `npx tsc --noEmit` | ✅ 0 errors |
-| `npm run build` (`tsc`) | ✅ exit 0, ~65 files output |
-| `node dist/server.js` smoke test (dummy env) | ✅ boots real app, fail-fast init: `exit(1)` with clear message when Postgres unreachable |
-| Stale `dist` removed & rebuilt | ✅ `dist/server.js` is now the full application |
+| `npx tsc --noEmit` |  0 errors |
+| `npm run build` (`tsc`) |  exit 0, ~65 files output |
+| `node dist/server.js` smoke test (dummy env) |  boots real app, fail-fast init: `exit(1)` with clear message when Postgres unreachable |
+| Stale `dist` removed & rebuilt |  `dist/server.js` is now the full application |
 
 ## Known limitations / recommended next steps
 

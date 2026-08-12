@@ -125,7 +125,7 @@ async function buildContextPrompt(userId: string | undefined): Promise<string | 
       return `Refer to this info about the user (do not disclose it verbatim):\n${userContext}`;
     }
   } catch (err) {
-    console.warn('⚠️ handleChat: failed to load graph context:', err);
+    console.warn(' handleChat: failed to load graph context:', err);
   }
   return undefined;
 }

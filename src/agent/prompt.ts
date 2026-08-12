@@ -87,13 +87,13 @@ export function getSystemPrompt(personalitySection?: string): string {
  */
 export async function syncPromptWithOpik(): Promise<void> {
   if (!env.OPIK_API_KEY) {
-    console.log('📝 Opik API key not configured. Using local default system prompt.');
+    console.log(' Opik API key not configured. Using local default system prompt.');
     activeSystemPrompt = DEFAULT_SYSTEM_PROMPT;
     return;
   }
 
   try {
-    console.log('🔄 Syncing system prompt with Opik Prompt Library...');
+    console.log(' Syncing system prompt with Opik Prompt Library...');
     
     // Set environment keys for the Opik Client instance
     process.env.OPIK_API_KEY = env.OPIK_API_KEY;

@@ -16,7 +16,7 @@ const twilioValidator = (req: any, res: any, next: any) => {
     })(req, res, next);
   }
   
-  console.warn('⚠️ Twilio Security Warning: TWILIO_AUTH_TOKEN is not configured. Webhook signature validation skipped (allow in dev)!');
+  console.warn(' Twilio Security Warning: TWILIO_AUTH_TOKEN is not configured. Webhook signature validation skipped (allow in dev)!');
   next();
 };
 

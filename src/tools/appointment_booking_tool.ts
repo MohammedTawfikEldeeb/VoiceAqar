@@ -20,7 +20,7 @@ export const checkSlotsTool = tool(
         )
         .join(', ');
     } catch (error: any) {
-      console.error('❌ Error checking calendar availability:', error);
+      console.error(' Error checking calendar availability:', error);
       return `Failed to check availability: ${error.message || String(error)}`;
     }
   },
@@ -62,7 +62,7 @@ export const bookAppointmentTool = tool(
       }
       return `Booking failed: ${result.message}`;
     } catch (error: any) {
-      console.error('❌ Error booking appointment:', error);
+      console.error(' Error booking appointment:', error);
       return `Failed to book appointment: ${error.message || String(error)}`;
     }
   },
