@@ -15,6 +15,20 @@
       "when": 1785960232078,
       "tag": "0001_clear_demogoblin",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786537025397,
+      "tag": "0002_special_toxin",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786623589460,
+      "tag": "0003_organic_dagger",
+      "breakpoints": true
     }
   ]
 }

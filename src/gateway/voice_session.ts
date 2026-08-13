@@ -3,6 +3,14 @@ import { Opik } from 'opik';
 import { env } from '../config/env.js';
 import { memoryManager } from '../infrastructure/memory/index.js';
 import { functionDeclarations, executeToolCall } from '../tools/registry.js';
+import {
+  SessionTelemetry,
+  objectiveScores,
+  judgeConversation,
+  qualitativeScores,
+  pushScores,
+  computePercentile,
+} from '../infrastructure/observability/metrics.js';
 
 export interface VoiceSessionHandlers {
   /** Called once the Gemini Live session is open. */
@@ -35,6 +43,10 @@ export class VoiceSession {
   private trace: any = null;
   private currentAgentResponse = '';
   private closed = false;
+  private telemetry: SessionTelemetry;
+  private turnFirstClientAudioAtMs?: number;
+  private turnLastClientAudioAtMs?: number;
+  private turnFirstAgentAudioAtMs?: number;
 
   constructor(
     private readonly opts: {
@@ -49,6 +61,16 @@ export class VoiceSession {
     }
   ) {
     this.ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
+    this.telemetry = {
+      sessionStartMs: Date.now(),
+      hadError: false,
+      toolCalls: [],
+      transcript: [],
+      inputTokens: 0,
+      outputTokens: 0,
+      turnEndToEndLatenciesMs: [],
+      turnTtfasMs: [],
+    };
   }
 
   private initOpikTrace() {
@@ -78,10 +100,33 @@ export class VoiceSession {
 
   private async handleMessage(message: any) {
     try {
+      // Usage metadata arrives on session messages (tokens consumed so far).
+      if (message.usageMetadata) {
+        if (message.usageMetadata.promptTokenCount) this.telemetry.inputTokens = message.usageMetadata.promptTokenCount;
+        if (message.usageMetadata.candidatesTokenCount) this.telemetry.outputTokens = message.usageMetadata.candidatesTokenCount;
+      }
+
       // --- Model turn: audio + text transcript chunks ---
       if (message.serverContent?.modelTurn?.parts) {
         for (const part of message.serverContent.modelTurn.parts) {
           if (part.inlineData?.mimeType?.startsWith('audio/')) {
+            const now = Date.now();
+            if (this.telemetry.firstAgentAudioAtMs === undefined) {
+              this.telemetry.firstAgentAudioAtMs = now;
+            }
+            if (this.turnFirstAgentAudioAtMs === undefined) {
+              this.turnFirstAgentAudioAtMs = now;
+              if (this.turnLastClientAudioAtMs !== undefined) {
+                const turnE2E = Math.max(0, now - this.turnLastClientAudioAtMs);
+                this.telemetry.turnEndToEndLatenciesMs?.push(turnE2E);
+                console.log(`[Latency Tracker] Turn E2E Latency: ${turnE2E} ms`);
+              }
+              if (this.turnFirstClientAudioAtMs !== undefined) {
+                const turnTtfa = Math.max(0, now - this.turnFirstClientAudioAtMs);
+                this.telemetry.turnTtfasMs?.push(turnTtfa);
+                console.log(`[Latency Tracker] Turn TTFA: ${turnTtfa} ms`);
+              }
+            }
             const audioBuffer = Buffer.from(part.inlineData.data, 'base64');
             this.opts.handlers.onAudio?.(audioBuffer);
           }
@@ -92,10 +137,38 @@ export class VoiceSession {
         }
       }
 
+      // --- Agent output transcription (spoken text of the response) ---
+      if (message.serverContent?.outputTranscription?.text) {
+        this.currentAgentResponse += message.serverContent.outputTranscription.text;
+        this.opts.handlers.onTextChunk?.(message.serverContent.outputTranscription.text);
+      }
+
+      // --- User input transcription (what the caller said) ---
+      if (message.serverContent?.inputTranscription?.text) {
+        const userText = message.serverContent.inputTranscription.text;
+        console.log(` User transcript: "${userText}"`);
+        await memoryManager.onUserMessage(this.opts.sessionId, userText, this.opts.userId);
+        this.telemetry.transcript.push({ role: 'user', text: userText });
+        if (this.trace) {
+          try {
+            const span = this.trace.span({ name: 'user_speech', type: 'general', input: { text: userText } });
+            span.end();
+          } catch (opikErr) {
+            console.error(' Opik span logging failed:', opikErr);
+          }
+        }
+      }
+
       // --- Turn complete: flush the accumulated agent response ---
       if (message.serverContent?.turnComplete) {
+        // Reset turn-level latency tracking for the next turn
+        this.turnFirstClientAudioAtMs = undefined;
+        this.turnLastClientAudioAtMs = undefined;
+        this.turnFirstAgentAudioAtMs = undefined;
+
         if (this.currentAgentResponse) {
           console.log(` Full agent response: "${this.currentAgentResponse}"`);
+          this.telemetry.transcript.push({ role: 'agent', text: this.currentAgentResponse });
           await memoryManager.onAgentResponse(this.opts.sessionId, this.currentAgentResponse);
           if (this.trace) {
             try {
@@ -108,24 +181,6 @@ export class VoiceSession {
           }
           this.opts.handlers.onTurnComplete?.(this.currentAgentResponse);
           this.currentAgentResponse = '';
-        }
-      }
-
-      // --- User transcript (client content) ---
-      if (message.serverContent?.clientContent?.parts) {
-        for (const part of message.serverContent.clientContent.parts) {
-          if (part.text) {
-            console.log(` User transcript: "${part.text}"`);
-            await memoryManager.onUserMessage(this.opts.sessionId, part.text, this.opts.userId);
-            if (this.trace) {
-              try {
-                const span = this.trace.span({ name: 'user_speech', type: 'general', input: { text: part.text } });
-                span.end();
-              } catch (opikErr) {
-                console.error(' Opik span logging failed:', opikErr);
-              }
-            }
-          }
         }
       }
 
@@ -146,6 +201,11 @@ export class VoiceSession {
             sessionId: this.opts.sessionId,
             userId: this.opts.userId,
             phone: this.opts.phone,
+          });
+
+          this.telemetry.toolCalls.push({
+            name: call.name,
+            ok: !/^Error in /.test(resultString),
           });
 
           if (toolSpan) {
@@ -177,6 +237,12 @@ export class VoiceSession {
       model: env.GEMINI_LIVE_MODEL,
       config: {
         responseModalities: [Modality.AUDIO],
+        inputAudioTranscription: {
+          languageCodes: ['ar-EG', 'en-US'],
+        },
+        outputAudioTranscription: {
+          languageCodes: ['ar-EG', 'en-US'],
+        },
         speechConfig: {
           voiceConfig: {
             prebuiltVoiceConfig: {
@@ -201,6 +267,7 @@ export class VoiceSession {
         onmessage: (message: any) => this.handleMessage(message),
         onerror: (err: any) => {
           console.error(' Gemini Live API error:', err?.message || err);
+          this.telemetry.hadError = true;
           this.opts.handlers.onError?.(err?.message || 'Gemini Live error');
         },
         onclose: (e: any) => {
@@ -214,6 +281,24 @@ export class VoiceSession {
   /** Forward an audio chunk (16kHz PCM base64) to Gemini Live. */
   sendAudioInput(base64Audio: string): void {
     if (!this.session || this.closed) return;
+    const now = Date.now();
+    
+    // Session-level tracking (first turn only)
+    if (this.telemetry.firstClientAudioAtMs === undefined) {
+      this.telemetry.firstClientAudioAtMs = now;
+    }
+    if (this.telemetry.firstAgentAudioAtMs === undefined) {
+      this.telemetry.lastClientAudioAtMs = now;
+    }
+
+    // Turn-level tracking (every turn)
+    if (this.turnFirstClientAudioAtMs === undefined) {
+      this.turnFirstClientAudioAtMs = now;
+    }
+    if (this.turnFirstAgentAudioAtMs === undefined) {
+      this.turnLastClientAudioAtMs = now;
+    }
+
     this.session.sendRealtimeInput({
       audio: {
         data: base64Audio,
@@ -222,16 +307,45 @@ export class VoiceSession {
     });
   }
 
-  /** Close the Gemini Live session, end the trace and flush Opik. */
+  /** Close the Gemini Live session, score the call on Opik and flush. */
   async close(): Promise<void> {
     if (this.closed) return;
     this.closed = true;
     try {
       if (this.session) this.session.close();
     } catch {}
+
+    let judged: any = null;
+
     if (this.trace) {
       try {
+        // 1. Objective scores (latency, errors, tool success, tokens, cost)
+        pushScores(this.trace, objectiveScores(this.telemetry));
+
+        // 2. Qualitative scores via LLM judge (best-effort, never throws)
+        judged = await judgeConversation(this.telemetry);
+        if (judged) {
+          pushScores(this.trace, qualitativeScores(judged));
+        }
+
         this.trace.end();
+
+        // Attach the conversation + outcomes to the trace output for visibility
+        // (done after end() so the transcript it already fully captured).
+        if (this.telemetry.transcript.length) {
+          try {
+            this.trace.update({
+              output: {
+                transcript: this.telemetry.transcript.map((m: { role: string; text: string }) => `${m.role}: ${m.text}`),
+                toolCalls: this.telemetry.toolCalls,
+                tokens: { input: this.telemetry.inputTokens, output: this.telemetry.outputTokens },
+              },
+            });
+          } catch (outErr) {
+            console.error(' Opik trace output update failed:', outErr);
+          }
+        }
+
         const opik = new Opik();
         await opik.flush();
         console.log(` Opik: Flushed ${this.opts.traceName} trace for session ${this.opts.sessionId}`);
@@ -239,6 +353,21 @@ export class VoiceSession {
         console.error(' Opik trace flush failed:', opikErr);
       }
     }
+
+    // Run evaluation judge if transcript is populated but not yet judged (e.g. Opik is disabled)
+    if (!judged && this.telemetry.transcript.length) {
+      try {
+        judged = await judgeConversation(this.telemetry);
+      } catch {}
+    }
+
+    // Log metrics to console
+    const p50 = computePercentile(this.telemetry.turnEndToEndLatenciesMs || [], 50);
+    const p90 = computePercentile(this.telemetry.turnEndToEndLatenciesMs || [], 90);
+    console.log(`[Latency Tracker] Session ${this.opts.sessionId} complete. P50: ${p50} ms, P90: ${p90} ms`);
+    console.log(` Metrics for ${this.opts.sessionId}:`, JSON.stringify(this.telemetry));
+
+
   }
 }
 

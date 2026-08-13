@@ -190,7 +190,7 @@ export class Neo4jGraphMemoryService implements IGraphMemoryService {
       const districts = prefs.filter((p: any) => p.type === 'District' || p.type === 'district').map((p: any) => p.value).filter(Boolean);
       const propertyTypes = prefs.filter((p: any) => p.type === 'PropertyType' || p.type === 'propertyType').map((p: any) => p.value).filter(Boolean);
 
-      let contextStr = 'User Preferences:\n';
+      let contextStr = `User ID: ${userId}\nUser Preferences:\n`;
       
       if (districts.length > 0) {
         contextStr += `- Preferred districts: ${districts.join(', ')}\n`;

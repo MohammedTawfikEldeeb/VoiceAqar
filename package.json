@@ -20,6 +20,7 @@
     "test:memory": "tsx test/test_memory_services.ts",
     "test:agent": "tsx test/test_agent.ts",
     "chat": "tsx test/chat_with_agent.ts",
+    "eval:regression": "tsx eval/run_eval_dataset.ts",
     "test": "npm run test:connections && npm run test:qdrant && npm run test:embeddings && npm run test:tools && npm run test:speech && npm run test:llm && npm run test:memory && npm run test:agent"
   },
   "repository": {

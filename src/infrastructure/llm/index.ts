@@ -23,6 +23,6 @@ export class LlmServiceFactory {
   }
 }
 
-// Export default active LLM service (Gemini only for Live mode)
-export const llmService = new GeminiLlmService();
+// Export default active LLM service based on environment settings
+export const llmService = LlmServiceFactory.create(env.LLM_PROVIDER);
 export default llmService;

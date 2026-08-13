@@ -191,17 +191,17 @@ async function testContextWindow() {
 
   // 3. Tool results buffer
   console.log('   Testing tool results buffer...');
-  ctx.addToolResult('property_retrieval', 'Found 3 apartments in Tagamoa');
-  ctx.addToolResult('sql_property_query', 'Found 2 exact matches');
-  const results = ctx.getToolResults();
+  ctx.addToolResult('test_session', 'property_retrieval', 'Found 3 apartments in Tagamoa');
+  ctx.addToolResult('test_session', 'sql_property_query', 'Found 2 exact matches');
+  const results = ctx.getToolResults('test_session');
   assert.strictEqual(results.length, 2, 'Should have 2 tool results');
   assert.strictEqual(results[0].source, 'tool:property_retrieval', 'First source should be property_retrieval');
   console.log('   Tool results buffer works');
 
   // 4. Memory summary injection
   console.log('   Testing memory summary injection...');
-  ctx.injectMemorySummary('Budget: 3M-5M EGP, Prefers: التجمع الخامس');
-  const liveCtx = ctx.getContextForLiveApi([
+  ctx.injectMemorySummary('test_session', 'Budget: 3M-5M EGP, Prefers: التجمع الخامس');
+  const liveCtx = ctx.getContextForLiveApi('test_session', [
     { role: 'user', content: 'بندور على شقة' },
     { role: 'model', content: 'حاضر يا فندم' },
   ]);
@@ -212,8 +212,8 @@ async function testContextWindow() {
 
   // 5. Reset
   console.log('   Testing reset...');
-  ctx.reset();
-  const afterReset = ctx.getToolResults();
+  ctx.reset('test_session');
+  const afterReset = ctx.getToolResults('test_session');
   assert.strictEqual(afterReset.length, 0, 'Tool results should be empty after reset');
   console.log('   Context window reset works');
 }

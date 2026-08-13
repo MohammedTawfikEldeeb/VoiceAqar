@@ -10,10 +10,6 @@ export const saveUserProfileTool = tool(
     try {
       const { name, phoneNumber, userId } = input;
       
-      if (!userId && !phoneNumber) {
-        return "Failed to save profile: Either userId or phoneNumber must be provided.";
-      }
-
       let activeUserId = userId;
 
       // 1. Check if user already exists by phone number
@@ -24,7 +20,7 @@ export const saveUserProfileTool = tool(
         }
       }
 
-      // 2. Generate a new userId if none exists
+      // 2. Generate a new userId if none exists (handles undefined/missing params gracefully)
       if (!activeUserId) {
         activeUserId = `usr_${Date.now()}`;
       }

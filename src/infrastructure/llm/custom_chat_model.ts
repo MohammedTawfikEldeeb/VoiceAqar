@@ -49,6 +49,7 @@ export class CustomChatModel extends BaseChatModel {
     const requestBody: any = {
       model: modelName,
       messages: formattedMessages,
+      max_tokens: options?.max_tokens || 2048,
     };
 
     // Use tools from options (runtime) or from bound tools (bindTools call)

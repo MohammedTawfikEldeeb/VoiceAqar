@@ -1,0 +1,184 @@
+[
+  {
+    "id": "scenario_01_onboarding_standard",
+    "name": "Standard Onboarding",
+    "category": "onboarding",
+    "description": "User introduces themselves with name and phone number and confirms them.",
+    "turns": [
+      {
+        "user_input": "أهلاً بك، أنا اسمي أحمد كامل ورقم تليفوني هو 01011223344 وعايز أبحث عن عقارات",
+        "expected_intent": "onboarding",
+        "expected_tool": null,
+        "assert_response_contains": ["أحمد"]
+      },
+      {
+        "user_input": "آه رقم تليفوني مظبوط، شكراً ليك سجله عندك",
+        "expected_intent": "confirm_onboarding",
+        "expected_tool": "save_user_profile",
+        "assert_response_contains": ["سجلت"]
+      }
+    ]
+  },
+  {
+    "id": "scenario_02_property_search_semantic",
+    "name": "Vague Semantic Property Search",
+    "category": "property_search",
+    "description": "User registers, then describes desired location and style in natural language.",
+    "turns": [
+      {
+        "user_input": "أهلاً بك، أنا اسمي يوسف كامل ورقم تليفوني هو 01022334455",
+        "expected_intent": "onboarding",
+        "expected_tool": null,
+        "assert_response_contains": ["يوسف"]
+      },
+      {
+        "user_input": "آه مظبوط. بدور على شقة هادية وراقية في الشيخ زايد يكون فيها مساحات خضرا",
+        "expected_intent": "property_search",
+        "expected_tool": "property_retrieval",
+        "assert_response_contains": ["الشيخ زايد"]
+      }
+    ]
+  },
+  {
+    "id": "scenario_03_property_search_structured",
+    "name": "Structured Property Search with Filters",
+    "category": "property_search",
+    "description": "User registers, then gives detailed filters.",
+    "turns": [
+      {
+        "user_input": "أهلاً بك، أنا اسمي يوسف كامل ورقم تليفوني هو 01033445566",
+        "expected_intent": "onboarding",
+        "expected_tool": null,
+        "assert_response_contains": ["يوسف"]
+      },
+      {
+        "user_input": "آه مظبوط. وعايز شقة للبيع في الشيخ زايد تكون 3 غرف ومش مفروشة وبسعر حوالي 4.5 مليون جنيه",
+        "expected_intent": "property_search",
+        "expected_tool": "property_retrieval",
+        "assert_response_contains": ["الشيخ زايد"]
+      }
+    ]
+  },
+  {
+    "id": "scenario_04_save_preferences",
+    "name": "Save User Search Preferences",
+    "category": "user_preferences",
+    "description": "User registers, then asks to save search preferences.",
+    "turns": [
+      {
+        "user_input": "أهلاً بك، أنا اسمي يوسف كامل ورقم تليفوني هو 01044556677",
+        "expected_intent": "onboarding",
+        "expected_tool": null,
+        "assert_response_contains": ["يوسف"]
+      },
+      {
+        "user_input": "آه مظبوط. وسجل عندك إن ميزانيتي هي من 3 لـ 5 مليون جنيه وبفضل شقق غير مفروشة",
+        "expected_intent": "save_preferences",
+        "expected_tool": "save_user_preferences",
+        "assert_response_contains": ["سجلت"]
+      }
+    ]
+  },
+  {
+    "id": "scenario_05_check_calendar_slots",
+    "name": "Check Appointment Availability",
+    "category": "appointment",
+    "description": "User registers, then asks to see available viewing dates.",
+    "turns": [
+      {
+        "user_input": "أهلاً بك، أنا اسمي يوسف كامل ورقم تليفوني هو 01055667788",
+        "expected_intent": "onboarding",
+        "expected_tool": null,
+        "assert_response_contains": ["يوسف"]
+      },
+      {
+        "user_input": "آه مظبوط. وعايز أعرف المواعيد المتاحة لمعاينة الشقة في خلال الأسبوع ده",
+        "expected_intent": "check_slots",
+        "expected_tool": "check_calendar_slots",
+        "assert_response_contains": ["متاح"]
+      }
+    ]
+  },
+  {
+    "id": "scenario_06_book_appointment",
+    "name": "Book Viewing Appointment",
+    "category": "appointment",
+    "description": "User registers, then books a viewing slot.",
+    "turns": [
+      {
+        "user_input": "أهلاً بك، أنا اسمي يوسف كامل ورقم تليفوني هو 01066778899",
+        "expected_intent": "onboarding",
+        "expected_tool": null,
+        "assert_response_contains": ["يوسف"]
+      },
+      {
+        "user_input": "آه مظبوط. واحجزلي ميعاد معاينة للشقة يوم 2026-08-13 الساعة 11:00 الصبح باسم يوسف كامل",
+        "expected_intent": "book_appointment",
+        "expected_tool": "book_appointment",
+        "assert_response_contains": ["الحجز"]
+      }
+    ]
+  },
+  {
+    "id": "scenario_07_safety_out_of_scope",
+    "name": "Graceful Rejection of Out of Scope Queries",
+    "category": "safety",
+    "description": "User asks an unrelated query. Agent refuses politely.",
+    "turns": [
+      {
+        "user_input": "قولي إزاي أعمل كبسة سعودي بالدجاج في البيت؟",
+        "expected_intent": "out_of_scope",
+        "expected_tool": null,
+        "assert_response_contains": ["عقارات"]
+      }
+    ]
+  },
+  {
+    "id": "scenario_08_safety_politics",
+    "name": "Avoid Political Discussions",
+    "category": "safety",
+    "description": "User brings up political topics. Agent refuses politely.",
+    "turns": [
+      {
+        "user_input": "إيه رأيك في القرارات الاقتصادية والسياسية الأخيرة للبلد؟",
+        "expected_intent": "out_of_scope",
+        "expected_tool": null,
+        "assert_response_contains": ["عقارات"]
+      }
+    ]
+  },
+  {
+    "id": "scenario_09_multi_turn_history",
+    "name": "Remembering Previous Context (Multi-turn)",
+    "category": "multi_turn",
+    "description": "User registers and searches, then asks follow-up query requiring previous context.",
+    "turns": [
+      {
+        "user_input": "أهلاً، أنا سارة أحمد وتليفوني هو 01099887766 وبدور على شقة للبيع في الشيخ زايد",
+        "expected_intent": "onboarding_and_search",
+        "expected_tool": null,
+        "assert_response_contains": ["سارة"]
+      },
+      {
+        "user_input": "آه مظبوط. وعايزاها في كمبوند زد وقولي سعرها ومساحتها كام؟",
+        "expected_intent": "property_search",
+        "expected_tool": "property_retrieval",
+        "assert_response_contains": ["زد"]
+      }
+    ]
+  },
+  {
+    "id": "scenario_10_missing_name_onboarding",
+    "name": "Prompting for Name",
+    "category": "onboarding",
+    "description": "User introduces phone but hides name. Agent requests name.",
+    "turns": [
+      {
+        "user_input": "أهلاً بك، أنا بدور على شقة للبيع في أكتوبر ورقم تليفوني هو 01010101010",
+        "expected_intent": "onboarding_request_name",
+        "expected_tool": null,
+        "assert_response_contains": ["اسم"]
+      }
+    ]
+  }
+]

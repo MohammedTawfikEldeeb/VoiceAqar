@@ -29,15 +29,3 @@ export const users = pgTable('users', {
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
-
-export const callLogs = pgTable('call_logs', {
-  callId: varchar('call_id', { length: 50 }).primaryKey(),
-  userId: varchar('user_id', { length: 50 }).references(() => users.userId),
-  startedAt: timestamp('started_at').defaultNow().notNull(),
-  endedAt: timestamp('ended_at'),
-  status: varchar('status', { length: 20 }).default('initiated').notNull(),
-  summary: text('summary'),
-});
-
-export type CallLog = typeof callLogs.$inferSelect;
-export type NewCallLog = typeof callLogs.$inferInsert;

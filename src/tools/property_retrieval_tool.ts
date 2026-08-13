@@ -4,7 +4,7 @@ import { embeddingService } from '../infrastructure/embeddings/index.js';
 import { vectorDbService } from '../infrastructure/vectordb/index.js';
 
 export const propertyRetrievalTool = tool(
-  async ({ query, bedrooms, bathrooms, minPrice, maxPrice, minArea, maxArea, furnished, limit = 5 }) => {
+  async ({ query, bedrooms, bathrooms, minPrice, maxPrice, minArea, maxArea, furnished, limit = 5, filter: incomingFilter }) => {
     
     const queryVector = await embeddingService.generateEmbedding(query, true);
 
@@ -39,7 +39,10 @@ export const propertyRetrievalTool = tool(
       }
     }
 
-    const filter = mustConditions.length > 0 ? { must: mustConditions } : undefined;
+    let filter = mustConditions.length > 0 ? { must: mustConditions } : undefined;
+    if (incomingFilter) {
+      filter = incomingFilter;
+    }
 
     const hits = await vectorDbService.search('properties', {
       vector: queryVector,
@@ -86,6 +89,7 @@ Furnished: ${p.furnished ? 'Yes' : 'No'}
       maxArea: z.number().optional().describe('Maximum area in square meters.'),
       furnished: z.boolean().optional().describe('Whether the property must be furnished.'),
       limit: z.number().optional().default(5).describe('Maximum number of properties to retrieve.'),
+      filter: z.any().optional().describe('Structured filter object for Qdrant (advanced).'),
     }),
   }
 );
