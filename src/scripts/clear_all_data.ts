@@ -10,21 +10,16 @@ async function clearAllDatabases() {
   // 1. Clear PostgreSQL users & LangGraph checkpoints
   console.log('⏳ 1. Clearing PostgreSQL data...');
   const pgClient = await pool.connect();
-  try {
-    // Truncate LangGraph checkpoint tables
-    await pgClient.query('TRUNCATE TABLE checkpoints CASCADE;');
-    await pgClient.query('TRUNCATE TABLE checkpoint_writes CASCADE;');
-    await pgClient.query('TRUNCATE TABLE checkpoint_blobs CASCADE;');
-    await pgClient.query('TRUNCATE TABLE checkpoint_metadata CASCADE;');
-    
-    // Truncate users table
-    await pgClient.query('TRUNCATE TABLE users CASCADE;');
-    console.log('✔ PostgreSQL checkpoint tables and users table successfully truncated!');
-  } catch (pgErr: any) {
-    console.warn('⚠ PostgreSQL truncate warning (tables might not exist yet):', pgErr.message || pgErr);
-  } finally {
-    pgClient.release();
+  const tables = ['checkpoints', 'checkpoint_writes', 'checkpoint_blobs', 'checkpoint_metadata', 'users'];
+  for (const table of tables) {
+    try {
+      await pgClient.query(`TRUNCATE TABLE ${table} CASCADE;`);
+      console.log(`   ✔ Truncated PostgreSQL table: ${table}`);
+    } catch (pgErr: any) {
+      console.warn(`   ⚠ Truncate warning for table "${table}":`, pgErr.message || pgErr);
+    }
   }
+  pgClient.release();
 
   // 2. Clear Neo4j Knowledge Graph
   console.log('⏳ 2. Clearing Neo4j Knowledge Graph...');
@@ -41,7 +36,7 @@ async function clearAllDatabases() {
   // 3. Clear Redis Caches
   console.log('⏳ 3. Clearing Redis...');
   try {
-    await redis.flushAll();
+    await redis.flushall();
     console.log('✔ Redis cache successfully flushed!');
   } catch (redisErr: any) {
     console.warn('⚠ Redis flush warning:', redisErr.message || redisErr);
