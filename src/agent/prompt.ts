@@ -40,7 +40,9 @@ Examples:
 
 ## General
 - Always call property_retrieval for property questions.
-- Don't know the user's name → ask, then save it immediately.`;
+- Don't know the user's name → ask, then save it immediately.
+- You MUST always pass the active User ID (which is provided to you in the system message context, e.g., "User ID: ...") to the 'userId' parameter when calling save_user_profile, save_user_preferences, check_calendar_slots, or book_appointment. Do not leave it empty.
+- When saving a user profile (save_user_profile), always pass both the 'name' and the 'phoneNumber' (if known from the conversation history).`;
 
 let activeSystemPrompt = DEFAULT_SYSTEM_PROMPT;
 
