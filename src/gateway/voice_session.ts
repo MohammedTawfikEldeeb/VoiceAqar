@@ -47,6 +47,7 @@ export class VoiceSession {
   private turnFirstClientAudioAtMs?: number;
   private turnLastClientAudioAtMs?: number;
   private turnFirstAgentAudioAtMs?: number;
+  private turnUserSpeechEndEstimateMs?: number;
 
   constructor(
     private readonly opts: {
@@ -114,10 +115,10 @@ export class VoiceSession {
             if (this.telemetry.firstAgentAudioAtMs === undefined) {
               this.telemetry.firstAgentAudioAtMs = now;
             }
-            if (this.turnFirstAgentAudioAtMs === undefined) {
+             if (this.turnFirstAgentAudioAtMs === undefined) {
               this.turnFirstAgentAudioAtMs = now;
-              if (this.turnLastClientAudioAtMs !== undefined) {
-                const turnE2E = Math.max(0, now - this.turnLastClientAudioAtMs);
+              if (this.turnUserSpeechEndEstimateMs !== undefined) {
+                const turnE2E = Math.max(0, now - this.turnUserSpeechEndEstimateMs);
                 this.telemetry.turnEndToEndLatenciesMs?.push(turnE2E);
                 console.log(`[Latency Tracker] Turn E2E Latency: ${turnE2E} ms`);
               }
@@ -147,6 +148,7 @@ export class VoiceSession {
       if (message.serverContent?.inputTranscription?.text) {
         const userText = message.serverContent.inputTranscription.text;
         console.log(` User transcript: "${userText}"`);
+        this.turnUserSpeechEndEstimateMs = Date.now();
         await memoryManager.onUserMessage(this.opts.sessionId, userText, this.opts.userId);
         this.telemetry.transcript.push({ role: 'user', text: userText });
         if (this.trace) {
@@ -165,6 +167,7 @@ export class VoiceSession {
         this.turnFirstClientAudioAtMs = undefined;
         this.turnLastClientAudioAtMs = undefined;
         this.turnFirstAgentAudioAtMs = undefined;
+        this.turnUserSpeechEndEstimateMs = undefined;
 
         if (this.currentAgentResponse) {
           console.log(` Full agent response: "${this.currentAgentResponse}"`);
