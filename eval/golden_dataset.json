@@ -3,21 +3,36 @@
     "id": "scenario_01_onboarding_standard",
     "name": "Standard Onboarding",
     "category": "onboarding",
-    "description": "User introduces themselves with name and phone number and confirms them.",
+    "description": "Un-onboarded user asks to search. Agent asks for name/phone, user provides them, agent saves profile & asks for budget, user provides budget, agent saves preferences & searches.",
     "turns": [
       {
-        "user_input": "أهلاً بك، أنا اسمي أحمد كامل ورقم تليفوني هو 01011223344 وعايز أبحث عن عقارات",
-        "expected_intent": "onboarding",
+        "user_input": "أهلاً بك، أنا بدور على شقة للبيع في التجمع الخامس",
         "expected_tool": null
       },
       {
-        "user_input": "آه رقم تليفوني مظبوط، شكراً ليك سجله عندك",
-        "expected_intent": "confirm_onboarding",
+        "user_input": "أنا اسمي أحمد كامل ورقم تليفوني 01011223344",
         "expected_tool": "save_user_profile",
         "expected_tool_args": {
+          "userId": "test_user_scenario_01_onboarding_standard",
           "name": "أحمد كامل",
           "phoneNumber": "01011223344"
         }
+      },
+      {
+        "user_input": "ميزانيتي هي من 10 لـ 15 مليون جنيه وبفضل شقق مفروشة",
+        "expected_tool": "save_user_preferences",
+        "expected_tool_args": {
+          "userId": "test_user_scenario_01_onboarding_standard",
+          "minPrice": 10000000,
+          "maxPrice": 15000000
+        }
+      },
+      {
+        "user_input": "تمام، ابحثلي بقى عن الشقق المتاحة عندك في التجمع",
+        "expected_tool": "property_retrieval",
+        "expected_property_ids": [
+          "PROP_030"
+        ]
       }
     ]
   },
@@ -25,22 +40,17 @@
     "id": "scenario_02_property_search_semantic",
     "name": "Vague Semantic Property Search",
     "category": "property_search",
-    "description": "User registers, then describes desired location and style in natural language. Verified against seeded Mivida villa.",
+    "description": "Onboarded user describes desired style in Sheikh Zayed. Agent confirms pre-seeded budget, user confirms, and search triggers.",
     "turns": [
       {
-        "user_input": "أهلاً بك، أنا اسمي يوسف كامل ورقم تليفوني هو 01022334455",
-        "expected_intent": "onboarding",
+        "user_input": "بدور على فيلا هادية وراقية في الشيخ زايد يكون فيها مساحات خضرا",
         "expected_tool": null
       },
       {
-        "user_input": "آه مظبوط. بدور على فيلا هادية وراقية في الشيخ زايد يكون فيها مساحات خضرا",
-        "expected_intent": "property_search",
+        "user_input": "آه لسه على نفس الميزانية اللي قولتها قبل كده، ابحثلي علطول",
         "expected_tool": "property_retrieval",
-        "expected_tool_args": {
-          "query": "الشيخ زايد"
-        },
-        "expected_retrieved_properties": [
-          "ميفيدا"
+        "expected_property_ids": [
+          "PROP_001"
         ]
       }
     ]
@@ -49,25 +59,17 @@
     "id": "scenario_03_property_search_structured",
     "name": "Structured Property Search with Filters",
     "category": "property_search",
-    "description": "User registers, then gives detailed filters matching seeded property index 6 (Taj City apartment).",
+    "description": "Onboarded user gives detailed filters. Agent confirms pre-seeded budget, user confirms, and search triggers matching PROP_006.",
     "turns": [
       {
-        "user_input": "أهلاً بك، أنا اسمي يوسف كامل ورقم تليفوني هو 01033445566",
-        "expected_intent": "onboarding",
+        "user_input": "عايز شقة للبيع في الشيخ زايد تكون 3 غرف ومفروشة وبسعر حوالي 5.5 مليون جنيه",
         "expected_tool": null
       },
       {
-        "user_input": "آه مظبوط. وعايز شقة للبيع في الشيخ زايد تكون 3 غرف ومفروشة وبسعر حوالي 5.1 million",
-        "expected_intent": "property_search",
+        "user_input": "آه لسه على نفس الميزانية، ابحثلي علطول",
         "expected_tool": "property_retrieval",
-        "expected_tool_args": {
-          "query": "الشيخ زايد",
-          "bedrooms": 3,
-          "maxPrice": 5100000,
-          "furnished": true
-        },
-        "expected_retrieved_properties": [
-          "تاج سيتي"
+        "expected_property_ids": [
+          "PROP_006"
         ]
       }
     ]
@@ -76,18 +78,22 @@
     "id": "scenario_04_save_preferences",
     "name": "Save User Search Preferences",
     "category": "user_preferences",
-    "description": "User registers, then asks to save search preferences.",
+    "description": "User registers, then saves search preferences under the same user ID.",
     "turns": [
       {
         "user_input": "أهلاً بك، أنا اسمي يوسف كامل ورقم تليفوني هو 01044556677",
-        "expected_intent": "onboarding",
-        "expected_tool": null
+        "expected_tool": "save_user_profile",
+        "expected_tool_args": {
+          "userId": "test_user_scenario_04_save_preferences",
+          "name": "يوسف كامل",
+          "phoneNumber": "01044556677"
+        }
       },
       {
-        "user_input": "آه مظبوط. وسجل عندك إن ميزانيتي هي من 3 لـ 5 مليون جنيه وبفضل شقق غير مفروشة",
-        "expected_intent": "save_preferences",
+        "user_input": "آه رقم تليفوني مظبوط. وسجل عندك إن ميزانيتي هي من 3 لـ 5 مليون جنيه وبفضل شقق غير مفروشة",
         "expected_tool": "save_user_preferences",
         "expected_tool_args": {
+          "userId": "test_user_scenario_04_save_preferences",
           "minPrice": 3000000,
           "maxPrice": 5000000
         }
@@ -98,16 +104,10 @@
     "id": "scenario_05_check_calendar_slots",
     "name": "Check Appointment Availability",
     "category": "appointment",
-    "description": "User registers, then asks to see available viewing dates.",
+    "description": "Onboarded user asks to see available viewing dates.",
     "turns": [
       {
-        "user_input": "أهلاً بك، أنا اسمي يوسف كامل ورقم تليفوني هو 01055667788",
-        "expected_intent": "onboarding",
-        "expected_tool": null
-      },
-      {
-        "user_input": "آه مظبوط. وعايز أعرف المواعيد المتاحة لمعاينة الشقة في خلال الأسبوع ده",
-        "expected_intent": "check_slots",
+        "user_input": "عايز أعرف المواعيد المتاحة لمعاينة الشقة في خلال الأسبوع ده",
         "expected_tool": "check_calendar_slots"
       }
     ]
@@ -116,16 +116,10 @@
     "id": "scenario_06_book_appointment",
     "name": "Book Viewing Appointment",
     "category": "appointment",
-    "description": "User registers, then books a viewing slot.",
+    "description": "Onboarded user books a viewing slot.",
     "turns": [
       {
-        "user_input": "أهلاً بك، أنا اسمي يوسف كامل ورقم تليفوني هو 01066778899",
-        "expected_intent": "onboarding",
-        "expected_tool": null
-      },
-      {
-        "user_input": "آه مظبوط. واحجزلي ميعاد معاينة للشقة يوم {FUTURE_DATE} الساعة 11:00 الصبح باسم يوسف كامل",
-        "expected_intent": "book_appointment",
+        "user_input": "احجزلي ميعاد معاينة للشقة يوم {FUTURE_DATE} الساعة 11:00 الصبح باسم يوسف كامل",
         "expected_tool": "book_appointment",
         "expected_tool_args": {
           "date": "{FUTURE_DATE}",
@@ -143,7 +137,6 @@
     "turns": [
       {
         "user_input": "قولي إزاي أعمل كبسة سعودي بالدجاج في البيت؟",
-        "expected_intent": "out_of_scope",
         "expected_tool": null
       }
     ]
@@ -156,7 +149,6 @@
     "turns": [
       {
         "user_input": "إيه رأيك في القرارات الاقتصادية والسياسية الأخيرة للبلد؟",
-        "expected_intent": "out_of_scope",
         "expected_tool": null
       }
     ]
@@ -165,22 +157,17 @@
     "id": "scenario_09_multi_turn_history",
     "name": "Remembering Previous Context (Multi-turn)",
     "category": "multi_turn",
-    "description": "User registers and searches, then asks follow-up query. Verified against compound Zed.",
+    "description": "Onboarded user searches, confirms budget, and then asks follow-up query requiring previous context.",
     "turns": [
       {
-        "user_input": "أهلاً، أنا سارة أحمد وتليفوني هو 01099887766 وبدور على شقة للبيع في الشيخ زايد",
-        "expected_intent": "onboarding_and_search",
+        "user_input": "بدور على شقة للبيع في الشيخ زايد",
         "expected_tool": null
       },
       {
-        "user_input": "آه مظبوط. وعايزاها في كمبوند زد وقولي سعرها ومساحتها كام؟",
-        "expected_intent": "property_search",
+        "user_input": "آه لسه على نفس الميزانية، وعايزاها في كمبوند زد وقولي سعرها ومساحتها كام؟",
         "expected_tool": "property_retrieval",
-        "expected_tool_args": {
-          "query": "زد"
-        },
-        "expected_retrieved_properties": [
-          "زد"
+        "expected_property_ids": [
+          "PROP_016"
         ]
       }
     ]
@@ -193,7 +180,6 @@
     "turns": [
       {
         "user_input": "أهلاً بك، أنا بدور على شقة للبيع في أكتوبر ورقم تليفوني هو 01010101010",
-        "expected_intent": "onboarding_request_name",
         "expected_tool": null
       }
     ]

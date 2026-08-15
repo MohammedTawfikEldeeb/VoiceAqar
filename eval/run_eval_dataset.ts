@@ -14,10 +14,9 @@ import { graphDriver } from '../src/config/graph.js';
 
 interface ScenarioTurn {
   user_input: string;
-  expected_intent: string;
   expected_tool: string | null;
   expected_tool_args?: Record<string, any>;
-  expected_retrieved_properties?: string[];
+  expected_property_ids?: string[];
 }
 
 interface Scenario {
@@ -95,7 +94,8 @@ async function runDatasetEvaluation() {
     if (scenario.id === 'scenario_02_property_search_semantic' ||
         scenario.id === 'scenario_03_property_search_structured' ||
         scenario.id === 'scenario_05_check_calendar_slots' ||
-        scenario.id === 'scenario_06_book_appointment') {
+        scenario.id === 'scenario_06_book_appointment' ||
+        scenario.id === 'scenario_09_multi_turn_history') {
       try {
         // 1. Seed user in Postgres
         await db.insert(users).values({
@@ -110,7 +110,8 @@ async function runDatasetEvaluation() {
         // 3. Pre-seed budget for these scenarios to prevent budget questions and allow immediate execution
         if (scenario.id === 'scenario_02_property_search_semantic' ||
             scenario.id === 'scenario_05_check_calendar_slots' ||
-            scenario.id === 'scenario_06_book_appointment') {
+            scenario.id === 'scenario_06_book_appointment' ||
+            scenario.id === 'scenario_09_multi_turn_history') {
           await memoryManager.graph.setBudget(userId, 3000000, 10000000, 'EGP');
         }
         if (scenario.id === 'scenario_03_property_search_structured') {
@@ -168,8 +169,10 @@ async function runDatasetEvaluation() {
 
       // Load context from Neo4j memory to mirror production chat flow
       const contextPrompt = await buildContextPrompt(userId);
+      const sessionInfo = `Active Session Information:\n- User ID: ${userId}`;
       const messages = [
-        ...(contextPrompt ? [{ role: 'system', content: contextPrompt }] : []),
+        { role: 'system', content: sessionInfo },
+        ...(contextPrompt ? [{ role: 'system', content: `Refer to this info about the user (do not disclose it verbatim):\n${contextPrompt}` }] : []),
         { role: 'user', content: userInput },
       ];
 
@@ -247,7 +250,7 @@ async function runDatasetEvaluation() {
                   assertionsPassed = false;
                 }
               } else {
-                // Direct exact match for parameters (bedrooms, price, etc.)
+                // Direct exact match for parameters (bedrooms, price, user ID, etc.)
                 if (actualValue === expectedValue) {
                   passedAssertions++;
                 } else {
@@ -263,24 +266,24 @@ async function runDatasetEvaluation() {
         }
       }
 
-      // 3. Expected Retrieved Properties checking
-      if (turn.expected_retrieved_properties && turn.expected_retrieved_properties.length > 0) {
+      // 2. Expected Property IDs checking (Retrieval Output verification)
+      if (turn.expected_property_ids && turn.expected_property_ids.length > 0) {
         // Find the outputs from the property_retrieval tool
         const retrievalOutput = toolOutputs.find(o => o.name === 'property_retrieval');
         if (retrievalOutput) {
-          for (const expectedText of turn.expected_retrieved_properties) {
+          for (const expectedId of turn.expected_property_ids) {
             totalAssertions++;
-            const match = retrievalOutput.content.toLowerCase().includes(expectedText.toLowerCase());
+            const match = retrievalOutput.content.toLowerCase().includes(expectedId.toLowerCase());
             if (match) {
               passedAssertions++;
             } else {
-              console.warn(`      ⚠ Retrieval Failure: Expected retrieved property payload to contain "${expectedText}"`);
+              console.warn(`      ⚠ Retrieval Failure: Expected retrieved property payload to contain "${expectedId}"`);
               assertionsPassed = false;
             }
           }
         } else {
-          totalAssertions += turn.expected_retrieved_properties.length;
-          console.warn(`      ⚠ Retrieval Failure: Expected property retrieval outputs, but tool "property_retrieval" was not run`);
+          totalAssertions += turn.expected_property_ids.length;
+          console.warn(`      ⚠ Retrieval Failure: Expected property retrieval outputs containing ${JSON.stringify(turn.expected_property_ids)}, but tool "property_retrieval" was not run`);
           assertionsPassed = false;
         }
       }

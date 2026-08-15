@@ -59,7 +59,8 @@ export const propertyRetrievalTool = tool(
       .map((hit, index) => {
         const p = hit.payload || {};
         return `[Property ${index + 1}] (Score: ${(hit.score * 100).toFixed(1)}%)
-ID: ${hit.id}
+Property ID: ${p.propertyId || 'N/A'}
+Qdrant ID: ${hit.id}
 Title: ${p.titleAr || p.title || 'N/A'}
 Description: ${p.descriptionAr || p.description || 'N/A'}
 City: ${p.cityAr || p.city || 'N/A'}
