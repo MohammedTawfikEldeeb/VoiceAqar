@@ -319,19 +319,10 @@ export class VoiceSession {
 
     if (this.trace) {
       try {
-        // 1. Objective scores (latency, errors, tool success, tokens, cost)
+        // 1. Log objective scores (latency, errors, tool success, tokens, cost)
         pushScores(this.trace, objectiveScores(this.telemetry));
 
-        // 2. Qualitative scores via LLM judge (best-effort, never throws)
-        judged = await judgeConversation(this.telemetry);
-        if (judged) {
-          pushScores(this.trace, qualitativeScores(judged));
-        }
-
-        this.trace.end();
-
-        // Attach the conversation + outcomes to the trace output for visibility
-        // (done after end() so the transcript it already fully captured).
+        // 2. Attach the conversation + outcomes to the trace output for visibility (done before ending)
         if (this.telemetry.transcript.length) {
           try {
             this.trace.update({
@@ -346,9 +337,23 @@ export class VoiceSession {
           }
         }
 
+        // 3. End the trace and flush objective scores immediately
+        this.trace.end();
         const opik = new Opik();
         await opik.flush();
-        console.log(` Opik: Flushed ${this.opts.traceName} trace for session ${this.opts.sessionId}`);
+        console.log(` Opik: Ended and flushed objective trace for session ${this.opts.sessionId}`);
+
+        // 4. Qualitative scores via LLM judge (run as post-end update)
+        try {
+          judged = await judgeConversation(this.telemetry);
+          if (judged) {
+            pushScores(this.trace, qualitativeScores(judged));
+            await opik.flush();
+            console.log(` Opik: Flushed qualitative judge scores for session ${this.opts.sessionId}`);
+          }
+        } catch (judgeErr) {
+          console.warn(' Opik qualitative judge failed to push:', judgeErr);
+        }
       } catch (opikErr) {
         console.error(' Opik trace flush failed:', opikErr);
       }

@@ -33,11 +33,15 @@ export async function initializeAgent() {
   // Sync latest system prompt from Opik Prompt Library
   await syncPromptWithOpik();
 
-  // Preload the embedding model in the background so the first
-  // property_retrieval query is not slow, without blocking server readiness.
-  embeddingService.warmup().catch((err) => {
+  // Preload the embedding model. Awaiting this blocks server startup until the model
+  // is fully loaded in memory, preventing main-thread event loop blocks during the first client call.
+  console.log(' Warming up embedding model (this may take a few seconds)...');
+  try {
+    await embeddingService.warmup();
+    console.log(' Embedding model warmed up successfully!');
+  } catch (err) {
     console.warn(' Embedding model warmup failed (will load lazily on first query):', err);
-  });
+  }
 
   // Initialize all memory layers (Neo4j constraints, etc.)
   await memoryManager.initialize();

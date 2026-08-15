@@ -1,5 +1,9 @@
 # Maskan (VoiceAqar) — Egyptian Arabic Real-Estate Voice Agent
 
+<p align="center">
+  <img src="assets/image.png" alt="Maskan Voice Agent Architecture" width="700"/>
+</p>
+
 Maskan (VoiceAqar) is an advanced, production-grade conversational voice assistant tailored for the Egyptian real estate market. Built on the **Gemini Live API (WebSockets)** and **LangGraph**, it enables natural, real-time bidirectional voice search, user onboarding, and viewing appointment bookings entirely in the Egyptian Arabic dialect.
 
 ---
@@ -45,6 +49,118 @@ graph TD
     ToolNode -->|Context Check| Redis[(Redis cache)]
     
     LiveGW -->|Session Telemetry| Opik[Opik Tracing Backend]
+```
+
+---
+
+## 📁 Project Structure
+
+```
+VoiceAqar/
+├── assets/                          # Static assets (images, diagrams)
+│   └── image.png
+├── docs/                            # Project documentation
+│   └── ARCHITECTURE.md
+├── drizzle/                         # Drizzle ORM migration files
+│   ├── 0000_yellow_toro.sql
+│   ├── 0001_clear_demogoblin.sql
+│   ├── 0002_special_toxin.sql
+│   ├── 0003_organic_dagger.sql
+│   └── meta/
+├── eval/                            # Evaluation & regression test suite
+│   ├── golden_dataset.json
+│   └── run_eval_dataset.ts
+├── public/                          # Client-side static files
+│   └── pcm-processor.js
+├── src/
+│   ├── agent/                       # LangGraph agent core
+│   │   ├── prompt.ts                # System prompt & Opik sync
+│   │   └── voiceaqar_agent.ts       # Agent initialization & orchestration
+│   ├── config/                      # Configuration loaders
+│   │   ├── db.ts                    # PostgreSQL connection
+│   │   ├── env.ts                   # Environment variable validation
+│   │   ├── graph.ts                 # Neo4j graph connection
+│   │   ├── personalities.ts         # Agent personality definitions
+│   │   ├── qdrant.ts                # Qdrant vector DB connection
+│   │   └── redis.ts                 # Redis connection
+│   ├── controllers/                 # Request handlers
+│   │   ├── chat.controller.ts       # Text chat endpoint
+│   │   ├── health.controller.ts     # Health check endpoint
+│   │   └── voice.controller.ts      # Voice WebSocket endpoint
+│   ├── db/
+│   │   └── schema.ts                # Drizzle ORM table schemas
+│   ├── gateway/                     # Real-time audio gateway layer
+│   │   ├── gemini_live_gateway.ts   # Gemini Live API WebSocket bridge
+│   │   ├── twilio_gateway.ts        # Twilio telephony adapter
+│   │   └── voice_session.ts         # Session lifecycle & Opik tracing
+│   ├── infrastructure/              # Core infrastructure services
+│   │   ├── calendar/
+│   │   │   └── google_calendar.ts   # Google Calendar API integration
+│   │   ├── embeddings/
+│   │   │   ├── index.ts
+│   │   │   ├── interface.ts
+│   │   │   └── providers/           # Embedding provider implementations
+│   │   ├── llm/
+│   │   │   ├── custom_chat_model.ts # Custom LangChain chat model wrapper
+│   │   │   ├── index.ts
+│   │   │   ├── interface.ts
+│   │   │   └── providers/           # LLM provider implementations (Gemini, OpenRouter, Groq)
+│   │   ├── memory/
+│   │   │   ├── context/             # Context window management
+│   │   │   ├── graph/               # Neo4j knowledge graph memory
+│   │   │   ├── index.ts
+│   │   │   ├── memory_manager.ts    # Unified memory orchestrator
+│   │   │   ├── relational/          # PostgreSQL session & user memory
+│   │   │   ├── semantic/            # Qdrant vector search memory
+│   │   │   └── working/             # Redis sliding-window working memory
+│   │   ├── observability/
+│   │   │   └── metrics.ts           # Latency & cost metric calculations
+│   │   └── vectordb/
+│   │       ├── index.ts
+│   │       ├── interface.ts
+│   │       └── providers/           # Vector DB provider implementations
+│   ├── routes/                      # Express route definitions
+│   │   ├── chat.routes.ts
+│   │   ├── health.routes.ts
+│   │   └── voice.routes.ts
+│   ├── scripts/                     # Utility & CLI scripts
+│   │   ├── clear_all_data.ts        # Purge all DB data (dev/eval reset)
+│   │   ├── index_properties.ts      # Seed properties & vector embeddings
+│   │   ├── list_live_models.ts      # List available Gemini Live models
+│   │   └── search_properties.ts     # CLI property search tool
+│   ├── tools/                       # LangGraph agent tool definitions
+│   │   ├── appointment_booking_tool.ts
+│   │   ├── property_retrieval_tool.ts
+│   │   ├── registry.ts              # Tool registry & exports
+│   │   ├── sql_query_tool.ts
+│   │   ├── user_preferences_tool.ts
+│   │   └── user_profile_tool.ts
+│   ├── utils/                       # Shared utilities
+│   │   ├── audio_helper.ts          # PCM/μ-law audio encoding helpers
+│   │   ├── auth.ts                  # API key validation
+│   │   ├── callbacks.ts             # Opik callback handler setup
+│   │   ├── message_formatter.ts     # LangChain message formatting
+│   │   ├── process_guard.ts         # Graceful shutdown handlers
+│   │   └── user_helper.ts           # User lookup helpers
+│   └── server.ts                    # Express app bootstrap & entrypoint
+├── test/                            # Ad-hoc test & experimentation scripts
+│   ├── chat_with_agent.ts
+│   ├── generate_arabic_audio_gemini.ts
+│   ├── test_agent.ts
+│   ├── test_connections.ts
+│   ├── test_embedding_service.ts
+│   ├── test_llm_service.ts
+│   ├── test_memory_services.ts
+│   ├── test_property_retrieval_tool.ts
+│   ├── test_qdrant_service.ts
+│   └── test_speech_services.ts
+├── .env.example                     # Environment variable template
+├── docker-compose.yml               # PostgreSQL, Redis, Qdrant, Neo4j services
+├── drizzle.config.ts                # Drizzle ORM config
+├── package.json
+├── seed.ts                          # Database seed script
+├── tsconfig.json
+└── README.md
 ```
 
 ---
