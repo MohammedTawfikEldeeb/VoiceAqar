@@ -39,10 +39,10 @@ export const saveUserPreferencesTool = tool(
     description: 'Save or update user search preferences (specifically preferred property types and budget range) in the Neo4j knowledge graph. Use this tool immediately when the user specifies their budget or the type of property they are interested in.',
     schema: z.object({
       userId: z.string().describe("The unique user ID (e.g. usr_...)"),
-      preferredPropertyTypes: z.array(z.string()).optional().describe("Array of preferred property types in Arabic (e.g., ['فيلا', 'شقة'])"),
-      minPrice: z.number().optional().describe('Minimum budget in EGP'),
-      maxPrice: z.number().optional().describe('Maximum budget in EGP'),
-      currency: z.string().optional().default('EGP').describe('Currency (e.g. EGP)'),
+      preferredPropertyTypes: z.array(z.string()).optional().nullable().describe("Array of preferred property types in Arabic (e.g., ['فيلا', 'شقة'])"),
+      minPrice: z.number().optional().nullable().describe('Minimum budget in EGP'),
+      maxPrice: z.number().optional().nullable().describe('Maximum budget in EGP'),
+      currency: z.string().optional().nullable().default('EGP').describe('Currency (e.g. EGP)'),
     }),
   }
 );

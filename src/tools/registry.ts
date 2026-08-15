@@ -129,6 +129,105 @@ function buildArgs(toolName: string, args: any, ctx: ToolCallContext): any {
   }
 }
 
+function coerceArgs(schema: any, args: any): any {
+  if (!schema || !schema.shape || !args) return args;
+
+  const coerced: Record<string, any> = { ...args };
+
+  for (const [key, field] of Object.entries(schema.shape)) {
+    const val = args[key];
+    if (val === undefined) continue;
+
+    // unwrap optional, default, nullable to find expected inner type
+    let cur = field as any;
+    let isNullable = false;
+    let isOptional = false;
+
+    while (
+      cur?._def?.type === 'optional' ||
+      cur?._def?.type === 'nullable' ||
+      cur?._def?.type === 'default'
+    ) {
+      if (cur._def.type === 'nullable') isNullable = true;
+      if (cur._def.type === 'optional') isOptional = true;
+      cur = cur._def.innerType;
+    }
+
+    const typeName = cur?._def?.type || cur?._def?.typeName;
+
+    // If the input is null
+    if (val === null) {
+      if (!isNullable && isOptional) {
+        delete coerced[key];
+      }
+      continue;
+    }
+
+    // If the input is an empty string
+    if (val === '') {
+      if (typeName !== 'string' && typeName !== 'ZodString') {
+        if (isNullable) {
+          coerced[key] = null;
+        } else if (isOptional) {
+          delete coerced[key];
+        } else {
+          delete coerced[key];
+        }
+        continue;
+      }
+    }
+
+    // Coerce numeric types
+    if (typeName === 'number' || typeName === 'ZodNumber') {
+      if (typeof val === 'string') {
+        const num = Number(val);
+        if (!isNaN(num)) {
+          coerced[key] = num;
+        } else {
+          if (isNullable) {
+            coerced[key] = null;
+          } else if (isOptional) {
+            delete coerced[key];
+          }
+        }
+      }
+    }
+    // Coerce boolean types
+    else if (typeName === 'boolean' || typeName === 'ZodBoolean') {
+      if (typeof val === 'string') {
+        if (val.toLowerCase() === 'true') {
+          coerced[key] = true;
+        } else if (val.toLowerCase() === 'false') {
+          coerced[key] = false;
+        } else {
+          coerced[key] = Boolean(val);
+        }
+      }
+    }
+    // Coerce arrays
+    else if (typeName === 'array' || typeName === 'ZodArray') {
+      if (typeof val === 'string') {
+        try {
+          const parsed = JSON.parse(val);
+          if (Array.isArray(parsed)) {
+            coerced[key] = parsed;
+          } else {
+            coerced[key] = [val];
+          }
+        } catch {
+          if (val.includes(',')) {
+            coerced[key] = val.split(',').map((s: string) => s.trim());
+          } else {
+            coerced[key] = [val];
+          }
+        }
+      }
+    }
+  }
+
+  return coerced;
+}
+
 /**
  * Execute a tool by name, injecting session context where needed and
  * recording the result in memory. Returns a string safe for Gemini.
@@ -140,7 +239,8 @@ export async function executeToolCall(toolName: string, args: any, ctx: ToolCall
   }
   try {
     const finalArgs = buildArgs(toolName, args, ctx);
-    const res: any = await tool.invoke(finalArgs);
+    const coercedArgs = coerceArgs(tool.schema, finalArgs);
+    const res: any = await tool.invoke(coercedArgs);
     const resultString = typeof res === 'string' ? res : (res.content as string || JSON.stringify(res));
     await memoryManager.onToolResult(ctx.sessionId, toolName, resultString);
     return resultString;

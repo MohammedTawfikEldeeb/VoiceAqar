@@ -103,15 +103,65 @@ npm run dev
 
 ## 🧪 Evaluation & Testing
 
-The project isolates evaluation routines into a dedicated `eval/` folder to automate regression testing without database side-effects.
+The project isolates evaluation routines into a dedicated `eval/` folder to automate regression testing and performance benchmarking without database side-effects.
 
-### Running Regression Benchmarks
-Before executing tests, the script automatically purges test users from Postgres and Neo4j to ensure deterministic runs.
+### 📊 How the Evaluation Suite Works
+The regression test suite is driven by a golden dataset configuration and a custom test runner:
+1. **Golden Dataset ([`eval/golden_dataset.json`](file:///d:/Mohamed/Projects/nodejs%20projects/VoiceAqar/eval/golden_dataset.json))**: Contains 10 golden scenarios covering user onboarding, safety guardrails (politics, out-of-scope queries), semantic and structured property searches, calendar availability checks, viewing bookings, and multi-turn context retention.
+2. **Database Isolation**: Before executing tests, the runner automatically purges test records from PostgreSQL (`users` table) and Neo4j (graph databases) to ensure a completely deterministic test environment.
+3. **State Pre-seeding**: For scenarios that target deep actions (e.g., booking a viewing slot or checking calendar availability), the runner pre-seeds required database states (like user profiles, phone numbers, and budgets) so tests bypass preliminary onboarding dialog loops.
+4. **Automated Verification**:
+   - **Deterministic Assertions**: Validates whether the correct tool is called, matching expected parameters (e.g., matching search locations or appointment dates).
+   - **Retrieval Payload Verification**: Ensures that property details retrieved from Qdrant contain expected property IDs.
+   - **LLM-as-a-Judge**: Uses an automated judge (leveraging Gemini 2.5 Flash) to score qualitative aspects of the conversation, such as task success, intent accuracy, and tool call precision.
+
+### 🏃 Running Regression Benchmarks
+To run the E2E regression evaluations and calculate performance metrics:
 ```bash
-# Run Golden Dataset evaluation & flush qualitative metrics to Opik
+# Execute Golden Dataset evaluation and flush results to Opik
 npm run eval:regression
 ```
-This script evaluates the agent on:
-*   **Deterministic Assertions**: Checks whether the correct tool calls were triggered and matches expected substring tokens in agent output.
-*   **E2E Latency**: Captures and logs P50 and P90 turn-level response latency.
-*   **LLM-as-a-Judge**: Leverages Gemini 2.5 Flash as an automated quality judge scoring conversation intent, response relevance, and goal completions.
+When the script completes, it outputs a summary table in the terminal and pushes all traces directly to your Opik dashboard.
+
+---
+
+## 🔍 Prompt Tracking & Observability
+
+Observability is a core pillar of VoiceAqar, managed through a native integration with the **Opik** SDK and Prompt Library.
+
+### 1. How Prompts are Tracked and Versioned
+System prompts are synchronized and versioned in the cloud automatically:
+*   **Prompt Synchronization**: When the agent initializes (`initializeAgent` in [`src/agent/voiceaqar_agent.ts`](file:///d:/Mohamed/Projects/nodejs%20projects/VoiceAqar/src/agent/voiceaqar_agent.ts)), it calls `syncPromptWithOpik()` from [`src/agent/prompt.ts`](file:///d:/Mohamed/Projects/nodejs%20projects/VoiceAqar/src/agent/prompt.ts).
+*   **Version Control**:
+    *   If the prompt `voiceaqar-system-prompt` does not exist in your Opik workspace, it is registered automatically.
+    *   If you edit the system prompt locally in [`src/agent/prompt.ts`](file:///d:/Mohamed/Projects/nodejs%20projects/VoiceAqar/src/agent/prompt.ts) and rerun the app or evaluations, the sync script compares the local prompt with the active version in Opik. If a difference is detected, it automatically uploads a **new prompt version**.
+    *   This provides full tracking, history, and comparison capabilities for prompt iterations.
+
+### 2. Tracing Conversations and API Calls
+*   **LangChain Callbacks**: The agent uses an `OpikCallbackHandler` (configured in [`src/utils/callbacks.ts`](file:///d:/Mohamed/Projects/nodejs%20projects/VoiceAqar/src/utils/callbacks.ts)) passed into the agent's run options. This intercepts all LLM requests, response generations, cost metrics, token counts, and tool execution flows.
+*   **WebSocket/Audio Tracing**: For live audio streams over WebSockets, the gateways (`VoiceSession` in [`src/gateway/voice_session.ts`](file:///d:/Mohamed/Projects/nodejs%20projects/VoiceAqar/src/gateway/voice_session.ts)) wrap the entire call in an Opik transaction trace, recording total duration, audio timings, and tool latency metrics.
+
+---
+
+## 📈 Latest Evaluation Results
+
+Below are the regression test metrics collected from the golden dataset evaluation:
+
+| Index | Scenario | Category | p50 Latency | p90 Latency | Assertions Passed | Status |
+| :---: | :--- | :--- | :---: | :---: | :---: | :---: |
+| **0** | 'Standard Onboarding' | `onboarding` | 1401ms | 2745ms | 7/7 (100%) | ✔ PASS |
+| **1** | 'Vague Semantic Property Search' | `property_search` | 900ms | 2263ms | 2/2 (100%) | ✔ PASS |
+| **2** | 'Structured Property Search wit' | `property_search` | 687ms | 2049ms | 2/2 (100%) | ✔ PASS |
+| **3** | 'Save User Search Preferences' | `user_preferences` | 1368ms | 1400ms | 8/8 (100%) | ✔ PASS |
+| **4** | 'Check Appointment Availability' | `appointment` | 2886ms | 2886ms | 1/1 (100%) | ✔ PASS |
+| **5** | 'Book Viewing Appointment' | `appointment` | 1029ms | 1029ms | 1/1 (100%) | ✔ PASS |
+| **6** | 'Graceful Rejection of Out of S' | `safety` | 871ms | 871ms | 0/0 (100%) | ✔ PASS |
+| **7** | 'Avoid Political Discussions' | `safety` | 763ms | 763ms | 0/0 (100%) | ✔ PASS |
+| **8** | 'Remembering Previous Context (' | `multi_turn` | 1115ms | 1793ms | 2/2 (100%) | ✔ PASS |
+| **9** | 'Prompting for Name' | `onboarding` | 705ms | 705ms | 0/0 (100%) | ✔ PASS |
+| **Avg / Sum** | **10 Scenarios** | — | **1172.5ms** | **1650.4ms** | **23/23 (100%)** | **10/10 PASS** |
+
+### ⚡ Summary of Latency & Success Rate
+*   **Average p50 (Median) Response Latency**: **1172.5 ms**
+*   **Average p90 (Tail) Response Latency**: **1650.4 ms**
+*   **Overall Assertion Success Rate**: **100% (23 out of 23 assertions passed)**

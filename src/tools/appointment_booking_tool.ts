@@ -29,7 +29,7 @@ export const checkSlotsTool = tool(
     description:
       'Check the company calendar for available appointment slots. Use this BEFORE booking an appointment whenever you need to offer available meeting times to the user.',
     schema: z.object({
-      date: z.string().optional().describe('Optional target date in YYYY-MM-DD format. If omitted, checks from today.'),
+      date: z.string().optional().nullable().describe('Optional target date in YYYY-MM-DD format. If omitted, checks from today.'),
     }),
   }
 );
@@ -53,8 +53,8 @@ export const bookAppointmentTool = tool(
         time,
         summary: `Meeting with ${userName || 'Client'} - ${propertyDetails || 'Property viewing'}`,
         description: `Phone: ${userPhone || 'N/A'}\nProperty: ${propertyDetails || 'N/A'}`,
-        attendeeName: userName,
-        attendeePhone: userPhone,
+        attendeeName: userName || 'Client',
+        attendeePhone: userPhone || undefined,
       });
 
       if (result.confirmed) {
@@ -73,9 +73,9 @@ export const bookAppointmentTool = tool(
     schema: z.object({
       date: z.string().describe('The appointment date in YYYY-MM-DD format.'),
       time: z.string().describe('The appointment start time in HH:MM 24h format (e.g. 11:00).'),
-      userName: z.string().optional().describe('The client name if known.'),
-      userPhone: z.string().optional().describe('The client phone number if known.'),
-      propertyDetails: z.string().optional().describe('Short description of the property or reason for the meeting, e.g. which property the user is interested in.'),
+      userName: z.string().optional().nullable().describe('The client name if known.'),
+      userPhone: z.string().optional().nullable().describe('The client phone number if known.'),
+      propertyDetails: z.string().optional().nullable().describe('Short description of the property or reason for the meeting, e.g. which property the user is interested in.'),
     }),
   }
 );

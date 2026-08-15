@@ -49,7 +49,7 @@ export class CustomChatModel extends BaseChatModel {
     const requestBody: any = {
       model: modelName,
       messages: formattedMessages,
-      max_tokens: options?.max_tokens || 2048,
+      max_tokens: options?.max_tokens || 1024,
     };
 
     // Use tools from options (runtime) or from bound tools (bindTools call)
@@ -57,6 +57,16 @@ export class CustomChatModel extends BaseChatModel {
     if (tools && tools.length > 0) {
       requestBody.tools = tools;
     }
+
+    // DEBUG LOGS
+    console.log(`\n--- [CustomChatModel Debug Request] ---`);
+    console.log(`Provider: ${provider} | Model: ${modelName}`);
+    const sysMsg = formattedMessages.find(m => m.role === 'system');
+    if (sysMsg) {
+      console.log(`Merged System Message:\n${sysMsg.content.substring(0, 300)}... [truncated]`);
+    }
+    console.log(`Tools bound: [${(tools || []).map((t: any) => t.function?.name || t.name).join(', ')}]`);
+    console.log(`----------------------------------------\n`);
 
     const response = await fetch(url, {
       method: 'POST',
@@ -75,6 +85,12 @@ export class CustomChatModel extends BaseChatModel {
     const data = await response.json() as any;
     const choice = data.choices?.[0];
     const choiceMsg = choice?.message;
+
+    // DEBUG LOGS
+    console.log(`\n--- [CustomChatModel Debug Response] ---`);
+    console.log(`Message Content: "${choiceMsg?.content || ''}"`);
+    console.log(`Raw Tool Calls: ${JSON.stringify(choiceMsg?.tool_calls || [])}`);
+    console.log(`-----------------------------------------\n`);
 
     const content = choiceMsg?.content || '';
     const toolCalls: any[] = [];

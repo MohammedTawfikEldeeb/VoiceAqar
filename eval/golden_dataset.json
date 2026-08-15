@@ -62,7 +62,7 @@
     "description": "Onboarded user gives detailed filters. Agent confirms pre-seeded budget, user confirms, and search triggers matching PROP_006.",
     "turns": [
       {
-        "user_input": "عايز شقة للبيع في الشيخ زايد تكون 3 غرف ومفروشة وبسعر حوالي 5.5 مليون جنيه",
+        "user_input": "عايز شقة للبيع في الشيخ زايد تكون 3 غرف ومفروشة وبسعر حوالي 5.1 مليون جنيه",
         "expected_tool": null
       },
       {
@@ -107,7 +107,7 @@
     "description": "Onboarded user asks to see available viewing dates.",
     "turns": [
       {
-        "user_input": "عايز أعرف المواعيد المتاحة لمعاينة الشقة في خلال الأسبوع ده",
+        "user_input": "عايز أعرف المواعيد المتاحة لمعاينة شقة تاج سيتي في خلال الأسبوع ده",
         "expected_tool": "check_calendar_slots"
       }
     ]

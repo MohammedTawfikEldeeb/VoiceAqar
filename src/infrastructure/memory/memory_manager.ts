@@ -7,6 +7,10 @@ import type { IWorkingMemoryService } from './working/interface.js';
 import type { IRelationalMemoryService } from './relational/interface.js';
 import type { IGraphMemoryService } from './graph/interface.js';
 import type { IContextWindowService } from './context/interface.js';
+import { db } from '../../config/db.js';
+import { users } from '../../db/schema.js';
+import { eq } from 'drizzle-orm';
+
 
 
 export class MemoryManager {
@@ -132,12 +136,52 @@ export class MemoryManager {
       this.context.injectMemorySummary(sessionId, userContext);
     }
 
-    // 3. Build the system prompt from the active real prompt (prompt.ts)
+    // 3. Look up user details in Postgres to identify if name is known
+    let phone: string | undefined = undefined;
+    let userName: string | undefined = undefined;
+
+    if (userId) {
+      try {
+        const pgUsers = await db.select().from(users).where(eq(users.userId, userId)).limit(1);
+        if (pgUsers.length > 0) {
+          phone = pgUsers[0].phoneNumber || undefined;
+          userName = pgUsers[0].name || undefined;
+        }
+      } catch (err) {
+        console.warn('Failed to load user info from postgres in getAgentContext:', err);
+      }
+    }
+
+    let userGreetingInstruction = '';
+    if (phone) {
+      if (!userName || userName === 'anonymous') {
+        userGreetingInstruction = `## User Identity Context
+- We do NOT know the user's name yet.
+- The user's phone number is already known to the system: "${phone}".
+- You MUST ask the user for their name (e.g. "ممكن أعرف اسم حضرتك يا فندم؟").
+- Do NOT ask the user for their phone number, as we already have it.
+- Once the user shares their name, you MUST call the "save_user_profile" tool passing their name, the phone number "${phone}", and the active user ID "${userId || ''}".`;
+      } else {
+        userGreetingInstruction = `## User Identity Context
+- The user's name is "${userName}".
+- The user's phone number is "${phone}".
+- You already know the user's name and phone number.
+- Do NOT ask them for their name or phone number.
+- Address them by their name (e.g. "يا فندم ${userName}") and proceed with their request.`;
+      }
+    }
+
+    // 4. Build the system prompt from the active real prompt (prompt.ts)
     //    enriched with the graph memory summary (user preferences/budget/history).
     const basePrompt = getSystemPrompt(personalitySection);
-    const systemPrompt = memorySummary && memorySummary.trim() !== 'No user context available.'
-      ? `${basePrompt}\n\n## User Context (from memory)\n${memorySummary}`
-      : basePrompt;
+    let systemPrompt = basePrompt;
+
+    if (userGreetingInstruction) {
+      systemPrompt += `\n\n${userGreetingInstruction}`;
+    }
+    if (memorySummary && memorySummary.trim() !== 'No user context available.') {
+      systemPrompt += `\n\n## User Context (from memory)\n${memorySummary}`;
+    }
 
     return {
       systemPrompt,

@@ -54,7 +54,7 @@ export const saveUserProfileTool = tool(
     description: 'Save or update the user profile details (such as their name and phone number) in the PostgreSQL database and Neo4j. Use this tool immediately when a new user introduces themselves or states their name.',
     schema: z.object({
       name: z.string().describe("The user's name in Arabic"),
-      phoneNumber: z.string().optional().describe("The user's phone number in digits. You MUST extract and pass this if the user states it."),
+      phoneNumber: z.string().optional().nullable().describe("The user's phone number in digits. You MUST extract and pass this if the user states it."),
       userId: z.string().describe("The unique user ID provided in the system session context (e.g. test_user_...)"),
     }),
   }

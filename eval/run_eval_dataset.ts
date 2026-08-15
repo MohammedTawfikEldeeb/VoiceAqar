@@ -11,6 +11,7 @@ import { redis } from '../src/config/redis.js';
 import { db } from '../src/config/db.js';
 import { users } from '../src/db/schema.js';
 import { graphDriver } from '../src/config/graph.js';
+import { eq } from 'drizzle-orm';
 
 interface ScenarioTurn {
   user_input: string;
@@ -31,9 +32,17 @@ async function buildContextPrompt(userId: string | undefined): Promise<string | 
   if (!userId) return undefined;
   try {
     const userContext = await memoryManager.graph.getUserContext(userId);
-    if (userContext && userContext.trim() && !userContext.trim().startsWith('No user context')) {
-      return `Refer to this info about the user (do not disclose it verbatim):\n${userContext}`;
+    const pgUsers = await db.select().from(users).where(eq(users.userId, userId)).limit(1);
+    
+    let fullContext = '';
+    if (pgUsers.length > 0) {
+      fullContext += `User Profile details (from PostgreSQL):\n- Name: ${pgUsers[0].name}\n- Phone: ${pgUsers[0].phoneNumber}\n\n`;
     }
+    if (userContext && userContext.trim() && !userContext.trim().startsWith('No user context')) {
+      fullContext += `User Preferences (from Neo4j):\n${userContext}`;
+    }
+    
+    return fullContext.trim() || undefined;
   } catch (err) {
     console.warn(' failed to load graph context:', err);
   }
