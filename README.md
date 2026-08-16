@@ -1,10 +1,10 @@
-# Maskan (VoiceAqar) — Egyptian Arabic Real-Estate Voice Agent
+# VoiceAqar — Egyptian Arabic Real-Estate Voice Agent
 
 <p align="center">
-  <img src="assets/image.png" alt="Maskan Voice Agent Architecture" width="700"/>
+  <img src="assets/image.png" alt="Voice Agent Architecture" width="700"/>
 </p>
 
-Maskan (VoiceAqar) is an advanced, production-grade conversational voice assistant tailored for the Egyptian real estate market. Built on the **Gemini Live API (WebSockets)** and **LangGraph**, it enables natural, real-time bidirectional voice search, user onboarding, and viewing appointment bookings entirely in the Egyptian Arabic dialect.
+VoiceAqar is an advanced, production-grade conversational voice assistant tailored for the Egyptian real estate market. Built on the **Gemini Live API (WebSockets)** and **LangGraph**, it enables natural, real-time bidirectional voice search, user onboarding, and viewing appointment bookings entirely in the Egyptian Arabic dialect.
 
 ---
 
@@ -39,16 +39,58 @@ Maskan (VoiceAqar) is an advanced, production-grade conversational voice assista
 
 ```mermaid
 graph TD
-    Client[Web Voice Client / Twilio] <-->|Audio WebSocket| LiveGW[Gemini Live Gateway]
-    LiveGW <-->|Gemini Live API| Gemini[Gemini Live Model]
-    Gemini <-->|Function Calls| ToolNode[Tool Execution Node]
-    
-    ToolNode -->|Read/Write| Postgres[(PostgreSQL)]
-    ToolNode -->|Semantic Search| Qdrant[(Qdrant Vector DB)]
-    ToolNode -->|Graph Relations| Neo4j[(Neo4j Graph DB)]
-    ToolNode -->|Context Check| Redis[(Redis cache)]
-    
-    LiveGW -->|Session Telemetry| Opik[Opik Tracing Backend]
+    subgraph Client ["Client Layer"]
+        Mic["Microphone (AudioWorklet 16kHz PCM)"]
+        Speaker["Speaker Playback (PCM Audio)"]
+        Browser["Browser Client (HTML5 / AudioContext)"]
+        Browser --> Mic
+        Speaker --> Browser
+    end
+
+    subgraph Gateway ["Gateway Layer (Node.js/Express)"]
+        LiveGW["Gemini Live Gateway (WebSocket Server)"]
+        Session["VoiceSession Manager (Session State)"]
+        UserLookup["User Lookup Helper (getOrCreateUser)"]
+        
+        Browser <-->|WebSocket Connection| LiveGW
+        LiveGW --> UserLookup
+        UserLookup --> Session
+        Session --> LiveGW
+    end
+
+    subgraph LLM ["Model Layer (Google AI Studio)"]
+        LiveAPI["Gemini Live API (bidiGenerateContent v1beta)"]
+        VAD["Cloud Voice Activity Detection (VAD)"]
+        LiveAPI --> VAD
+        LiveGW <-->|Bidirectional WebSocket| LiveAPI
+    end
+
+    subgraph Tools ["Tool Execution Dispatcher"]
+        Registry["Central Tool Registry (executeToolCall)"]
+        Coercion["Zod Parameter Coercion Layer"]
+        
+        LiveAPI <-->|Function Calls & Responses| Registry
+        Registry --> Coercion
+    end
+
+    subgraph Infrastructure ["Infrastructure & Storage"]
+        Postgres[("PostgreSQL (Drizzle ORM) <br/> Users & Bookings")]
+        Redis[("Redis Cache <br/> Session TTL & History")]
+        Neo4j[("Neo4j Graph Database <br/> User Knowledge Graph")]
+        Qdrant[("Qdrant Vector Database <br/> Property Embeddings")]
+        GoogleCal["Google Calendar API <br/> Viewings Scheduling"]
+
+        Coercion --> Postgres
+        Coercion --> Redis
+        Coercion --> Neo4j
+        Coercion --> Qdrant
+        Coercion --> GoogleCal
+    end
+
+    subgraph Observability ["Observability & Telemetry"]
+        Opik["Comet Opik Backend <br/> Traces, Spans, Latency p50/p90"]
+        Session -->|Objective Metrics & Logs| Opik
+    end
 ```
 
 ---
@@ -260,6 +302,21 @@ System prompts are synchronized and versioned in the cloud automatically:
 ---
 
 ## 📈 Latest Evaluation Results
+
+### 🎙️ Live Voice Session Performance (WebSockets)
+
+Below are the average performance metrics captured from real-time bidirectional voice sessions over WebSockets using the Gemini Live API (`gemini-3.1-flash-live-preview`):
+
+| Metric | Average (Avg) | Description |
+| :--- | :---: | :--- |
+| **p50 Latency (Median)** | **985.5 ms (0.99s)** | Median response latency per turn |
+| **p90 Latency (Tail)** | **1155.0 ms (1.16s)** | Tail (90th percentile) response latency |
+| **e2e Latency (Average)** | **885.0 ms (0.89s)** | Average round-trip delay per turn |
+| **TTFA (Time to First Audio)** | **859.0 ms (0.86s)** | Connection establishment & greeting delay (Cold Start) |
+| **Tool Success Rate** | **100%** | Execution success rate of triggered tools |
+| **Error Rate** | **0%** | Call stability (percentage of connection errors) |
+
+---
 
 Below are the regression test metrics collected from the golden dataset evaluation:
 
