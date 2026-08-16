@@ -6,8 +6,6 @@ import { functionDeclarations, executeToolCall } from '../tools/registry.js';
 import {
   SessionTelemetry,
   objectiveScores,
-  judgeConversation,
-  qualitativeScores,
   pushScores,
   computePercentile,
 } from '../infrastructure/observability/metrics.js';
@@ -48,6 +46,7 @@ export class VoiceSession {
   private turnLastClientAudioAtMs?: number;
   private turnFirstAgentAudioAtMs?: number;
   private turnUserSpeechEndEstimateMs?: number;
+  private sessionStartTime: number;
 
   constructor(
     private readonly opts: {
@@ -58,10 +57,12 @@ export class VoiceSession {
       systemPrompt: string;
       voiceName?: string;
       traceName: string;
+      sessionStartTime?: number;
       handlers: VoiceSessionHandlers;
     }
   ) {
     this.ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
+    this.sessionStartTime = this.opts.sessionStartTime || Date.now();
     this.telemetry = {
       sessionStartMs: Date.now(),
       hadError: false,
@@ -75,10 +76,10 @@ export class VoiceSession {
   }
 
   private initOpikTrace() {
-    if (!env.OPIK_API_KEY) return;
+    if (!env.OPIK_API_KEY || !env.OPIK_WORKSPACE) return;
     try {
       process.env.OPIK_API_KEY = env.OPIK_API_KEY;
-      if (env.OPIK_WORKSPACE) process.env.OPIK_WORKSPACE = env.OPIK_WORKSPACE;
+      process.env.OPIK_WORKSPACE = env.OPIK_WORKSPACE;
       process.env.OPIK_PROJECT_NAME = env.OPIK_PROJECT_NAME;
       const opik = new Opik();
       this.trace = opik.trace({
@@ -114,6 +115,8 @@ export class VoiceSession {
             const now = Date.now();
             if (this.telemetry.firstAgentAudioAtMs === undefined) {
               this.telemetry.firstAgentAudioAtMs = now;
+              const elapsed = now - this.sessionStartTime;
+              console.log(`[+${elapsed}ms] First audio from Gemini`);
             }
              if (this.turnFirstAgentAudioAtMs === undefined) {
               this.turnFirstAgentAudioAtMs = now;
@@ -121,11 +124,6 @@ export class VoiceSession {
                 const turnE2E = Math.max(0, now - this.turnUserSpeechEndEstimateMs);
                 this.telemetry.turnEndToEndLatenciesMs?.push(turnE2E);
                 console.log(`[Latency Tracker] Turn E2E Latency: ${turnE2E} ms`);
-              }
-              if (this.turnFirstClientAudioAtMs !== undefined) {
-                const turnTtfa = Math.max(0, now - this.turnFirstClientAudioAtMs);
-                this.telemetry.turnTtfasMs?.push(turnTtfa);
-                console.log(`[Latency Tracker] Turn TTFA: ${turnTtfa} ms`);
               }
             }
             const audioBuffer = Buffer.from(part.inlineData.data, 'base64');
@@ -147,7 +145,8 @@ export class VoiceSession {
       // --- User input transcription (what the caller said) ---
       if (message.serverContent?.inputTranscription?.text) {
         const userText = message.serverContent.inputTranscription.text;
-        console.log(` User transcript: "${userText}"`);
+        const elapsed = Date.now() - this.sessionStartTime;
+        console.log(`[+${elapsed}ms] User finished speaking: "${userText}"`);
         this.turnUserSpeechEndEstimateMs = Date.now();
         await memoryManager.onUserMessage(this.opts.sessionId, userText, this.opts.userId);
         this.telemetry.transcript.push({ role: 'user', text: userText });
@@ -236,35 +235,46 @@ export class VoiceSession {
   async connect(): Promise<void> {
     this.initOpikTrace();
 
+    const elapsed = Date.now() - this.sessionStartTime;
+    console.log(`[+${elapsed}ms] Gemini connection starting`);
+
+    const isNativeAudio = env.GEMINI_LIVE_MODEL.includes('native-audio');
+
+    const liveConfig: any = {
+      inputAudioTranscription: {
+        languageCodes: ['ar-EG', 'en-US'],
+      },
+      outputAudioTranscription: {
+        languageCodes: ['ar-EG', 'en-US'],
+      },
+      systemInstruction: {
+        parts: [{ text: this.opts.systemPrompt }],
+      },
+      tools: [
+        {
+          functionDeclarations,
+        },
+      ],
+    };
+
+    if (!isNativeAudio) {
+      liveConfig.responseModalities = [Modality.AUDIO];
+      liveConfig.speechConfig = {
+        voiceConfig: {
+          prebuiltVoiceConfig: {
+            voiceName: this.opts.voiceName || env.GEMINI_LIVE_VOICE,
+          },
+        },
+      };
+    }
+
     this.session = await this.ai.live.connect({
       model: env.GEMINI_LIVE_MODEL,
-      config: {
-        responseModalities: [Modality.AUDIO],
-        inputAudioTranscription: {
-          languageCodes: ['ar-EG', 'en-US'],
-        },
-        outputAudioTranscription: {
-          languageCodes: ['ar-EG', 'en-US'],
-        },
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: {
-              voiceName: this.opts.voiceName || env.GEMINI_LIVE_VOICE,
-            },
-          },
-        },
-        systemInstruction: {
-          parts: [{ text: this.opts.systemPrompt }],
-        },
-        tools: [
-          {
-            functionDeclarations,
-          },
-        ],
-      },
+      config: liveConfig,
       callbacks: {
         onopen: () => {
-          console.log(' Connected to Gemini Live API');
+          const elapsed = Date.now() - this.sessionStartTime;
+          console.log(`[+${elapsed}ms] WebSocket connected & Live session configured`);
           this.opts.handlers.onOpen?.();
         },
         onmessage: (message: any) => this.handleMessage(message),
@@ -289,6 +299,8 @@ export class VoiceSession {
     // Session-level tracking (first turn only)
     if (this.telemetry.firstClientAudioAtMs === undefined) {
       this.telemetry.firstClientAudioAtMs = now;
+      const elapsed = now - this.sessionStartTime;
+      console.log(`[+${elapsed}ms] Audio streaming started`);
     }
     if (this.telemetry.firstAgentAudioAtMs === undefined) {
       this.telemetry.lastClientAudioAtMs = now;
@@ -318,8 +330,6 @@ export class VoiceSession {
       if (this.session) this.session.close();
     } catch {}
 
-    let judged: any = null;
-
     if (this.trace) {
       try {
         // 1. Log objective scores (latency, errors, tool success, tokens, cost)
@@ -345,29 +355,12 @@ export class VoiceSession {
         const opik = new Opik();
         await opik.flush();
         console.log(` Opik: Ended and flushed objective trace for session ${this.opts.sessionId}`);
-
-        // 4. Qualitative scores via LLM judge (run as post-end update)
-        try {
-          judged = await judgeConversation(this.telemetry);
-          if (judged) {
-            pushScores(this.trace, qualitativeScores(judged));
-            await opik.flush();
-            console.log(` Opik: Flushed qualitative judge scores for session ${this.opts.sessionId}`);
-          }
-        } catch (judgeErr) {
-          console.warn(' Opik qualitative judge failed to push:', judgeErr);
-        }
       } catch (opikErr) {
         console.error(' Opik trace flush failed:', opikErr);
       }
     }
 
-    // Run evaluation judge if transcript is populated but not yet judged (e.g. Opik is disabled)
-    if (!judged && this.telemetry.transcript.length) {
-      try {
-        judged = await judgeConversation(this.telemetry);
-      } catch {}
-    }
+
 
     // Log metrics to console
     const p50 = computePercentile(this.telemetry.turnEndToEndLatenciesMs || [], 50);

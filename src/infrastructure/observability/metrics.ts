@@ -50,6 +50,10 @@ export function computeTtfaMs(t: SessionTelemetry): number {
 
 /** Approximate E2E latency: last user audio before the response -> first agent audio. */
 export function computeEndToEndMs(t: SessionTelemetry): number {
+  if (t.turnEndToEndLatenciesMs && t.turnEndToEndLatenciesMs.length > 0) {
+    const sum = t.turnEndToEndLatenciesMs.reduce((a, b) => a + b, 0);
+    return Math.round(sum / t.turnEndToEndLatenciesMs.length);
+  }
   if (!t.lastClientAudioAtMs || !t.firstAgentAudioAtMs) return UNKNOWN;
   return Math.max(0, t.firstAgentAudioAtMs - t.lastClientAudioAtMs);
 }
@@ -163,7 +167,10 @@ Return STRICT JSON only: {"task_success":0.0,"intent_accuracy":0.0,"response_rel
  * Uses OpenRouter/Groq when configured, otherwise Gemini (default).
  */
 async function judgeRaw(prompt: string): Promise<string | null> {
-  const provider = env.LLM_PROVIDER;
+  let provider = env.LLM_PROVIDER;
+  if (env.GEMINI_EVAL_MODEL.includes('gemini') && provider === 'groq') {
+    provider = 'gemini';
+  }
 
   if (provider === 'openrouter') {
     const apiKey = env.OPENROUTER_API_KEY;

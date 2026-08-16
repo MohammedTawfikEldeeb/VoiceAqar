@@ -6,6 +6,7 @@ import { VoiceSession } from './voice_session.js';
 
 export class GeminiLiveGateway {
   async handleConnection(ws: WebSocket, url: URL) {
+    const startTime = Date.now();
     const phone = url.searchParams.get('phone');
     if (!phone) {
       ws.send(JSON.stringify({ type: 'error', message: 'Phone number is required' }));
@@ -13,10 +14,14 @@ export class GeminiLiveGateway {
       return;
     }
 
+    console.log(`[0ms] Call started`);
+
     try {
       // --- User lookup/registration via centralized helper ---
       const { userId, userName } = await getOrCreateUser(phone);
-      console.log(` Gemini Live: Recognized user "${userName}" (${userId})`);
+      
+      const elapsed1 = Date.now() - startTime;
+      console.log(`[+${elapsed1}ms] Backend received request (User: ${userName})`);
 
       // --- Session + Memory ---
       const sessionId = `live_${Date.now()}`;
@@ -24,9 +29,11 @@ export class GeminiLiveGateway {
 
       // --- Random personality per call (voice + persona) ---
       const personality = pickRandomPersonality();
-      console.log(` Gemini Live: Assigned personality "${personality.name}" (voice: ${personality.voice})`);
 
       const { systemPrompt } = await memoryManager.getAgentContext(sessionId, userId, personality.personality);
+
+      const elapsed2 = Date.now() - startTime;
+      console.log(`[+${elapsed2}ms] User context loaded`);
 
       // --- Shared voice session (connect + tools + memory + Opik) ---
       const voice = new VoiceSession({
@@ -37,6 +44,7 @@ export class GeminiLiveGateway {
         systemPrompt,
         voiceName: personality.voice,
         traceName: 'Gemini Live Session',
+        sessionStartTime: startTime,
         handlers: {
           onOpen: () => {
             ws.send(JSON.stringify({ type: 'status', status: 'ready' }));

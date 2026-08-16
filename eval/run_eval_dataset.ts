@@ -88,6 +88,12 @@ async function runDatasetEvaluation() {
     process.exit(1);
   }
 
+  const { env } = await import('../src/config/env.js');
+  if (env.OPIK_API_KEY && !env.OPIK_WORKSPACE) {
+    console.error('❌ Error: OPIK_API_KEY is configured in your .env file, but OPIK_WORKSPACE is empty. To run evaluations and track metrics, please set OPIK_WORKSPACE to your Comet/Opik workspace name.');
+    process.exit(1);
+  }
+
   const opik = new Opik();
   const summary: any[] = [];
 

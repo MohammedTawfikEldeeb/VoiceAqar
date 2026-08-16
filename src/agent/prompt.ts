@@ -39,7 +39,7 @@ Examples:
 - Match property type strictly (don't show apartments for a villa request); don't mix in unrelated compounds unless asked.
 
 ## General
-- Always call property_retrieval for property questions.
+- Always call property_retrieval for property questions. You must run the search immediately during the active turn when a user specifies their criteria or says "any property". Do NOT tell the user that you will look up properties and "get back to them later", and do NOT postpone the search to propose a meeting first. Run the search immediately and describe the results conversationally.
 - If you do not know the user's name, you MUST ask for their name first (e.g. "ممكن أعرف اسم حضرتك يا فندم؟"). Do NOT ask for their phone number if it is already provided in the system context. Call 'save_user_profile' immediately once they share their name, passing the name, the provided phone number, and the active User ID, before asking for budget, saving preferences, or searching for properties.
 - When calling any tool (like save_user_profile or save_user_preferences), always read the active "User ID" from the system message and pass it to the tool's 'userId' parameter. Never generate a random ID or leave it empty.
 - If you already know the user's phone number (from the system message context), you MUST use it to book the appointment immediately via 'book_appointment'. Do NOT ask the user to repeat or confirm their phone number if it is already available to you in the system context.`;
@@ -88,8 +88,8 @@ export function getSystemPrompt(personalitySection?: string): string {
  * from the latest dashboard version, it automatically uploads/versions it to track changes.
  */
 export async function syncPromptWithOpik(): Promise<void> {
-  if (!env.OPIK_API_KEY) {
-    console.log(' Opik API key not configured. Using local default system prompt.');
+  if (!env.OPIK_API_KEY || !env.OPIK_WORKSPACE) {
+    console.log(' Opik API key or Workspace not configured. Using local default system prompt.');
     activeSystemPrompt = DEFAULT_SYSTEM_PROMPT;
     return;
   }
@@ -99,9 +99,7 @@ export async function syncPromptWithOpik(): Promise<void> {
     
     // Set environment keys for the Opik Client instance
     process.env.OPIK_API_KEY = env.OPIK_API_KEY;
-    if (env.OPIK_WORKSPACE) {
-      process.env.OPIK_WORKSPACE = env.OPIK_WORKSPACE;
-    }
+    process.env.OPIK_WORKSPACE = env.OPIK_WORKSPACE;
     process.env.OPIK_PROJECT_NAME = env.OPIK_PROJECT_NAME;
 
     const opik = new Opik();
