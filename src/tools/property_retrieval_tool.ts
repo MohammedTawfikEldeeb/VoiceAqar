@@ -41,7 +41,17 @@ export const propertyRetrievalTool = tool(
 
     let filter = mustConditions.length > 0 ? { must: mustConditions } : undefined;
     if (incomingFilter) {
-      filter = incomingFilter;
+      let parsedFilter = incomingFilter;
+      if (typeof incomingFilter === 'string') {
+        try {
+          parsedFilter = JSON.parse(incomingFilter);
+        } catch {
+          parsedFilter = undefined;
+        }
+      }
+      if (parsedFilter && Object.keys(parsedFilter).length > 0) {
+        filter = parsedFilter;
+      }
     }
 
     const hits = await vectorDbService.search('properties', {

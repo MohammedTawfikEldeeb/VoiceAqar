@@ -291,6 +291,19 @@ export class VoiceSession {
     });
   }
 
+  /** Trigger the model to speak the initial greeting automatically on connection. */
+  triggerGreeting(): void {
+    if (!this.session || this.closed) return;
+    try {
+      this.session.sendRealtimeInput({
+        text: "ابدأ بالترحيب بالمستخدم ترحيباً حاراً وودياً باللهجة المصرية مباشرة دون انتظار كلامه.",
+      });
+      console.log(' Gemini Live: Triggered initial greeting');
+    } catch (err) {
+      console.error(' Failed to trigger initial greeting:', err);
+    }
+  }
+
   /** Forward an audio chunk (16kHz PCM base64) to Gemini Live. */
   sendAudioInput(base64Audio: string): void {
     if (!this.session || this.closed) return;

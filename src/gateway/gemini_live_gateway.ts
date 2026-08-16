@@ -63,6 +63,7 @@ export class GeminiLiveGateway {
       });
 
       await voice.connect();
+      voice.triggerGreeting();
 
       // --- Forward browser PCM audio to Gemini ---
       ws.on('message', (data: Buffer) => {
